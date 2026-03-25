@@ -1,5 +1,8 @@
 # Laravel Logics
 
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/axolote-source/laravel-logics.svg?style=flat-square)](https://packagist.org/packages/axolote-source/laravel-logics)
+[![Total Downloads](https://img.shields.io/packagist/dt/axolote-source/laravel-logics.svg?style=flat-square)](https://packagist.org/packages/axolote-source/laravel-logics)
+
 Una librería para Laravel que proporciona una forma estructurada de manejar la lógica de negocio mediante clases especializadas (Logics) inyectadas en los controladores. Este enfoque ayuda a mantener los controladores delgados y promueve la reutilización del código y la capacidad de prueba.
 
 ## Instalación
