@@ -24,7 +24,7 @@ abstract class Logic
 
     private bool $shouldResponse = false;
 
-    abstract protected function action(): self;
+    abstract protected function action(): Logic;
 
     abstract protected function before(): bool;
 

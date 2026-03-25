@@ -92,5 +92,14 @@ Componentes de ejemplo de Flow:
 -   **Reutilización**: La lógica central está desacoplada de los controladores.
 -   **Extensibilidad**: Fácil de extender las clases base para agregar comportamientos personalizados.
 
+## Pruebas (Testing)
+
+Para ejecutar las pruebas del paquete, instala las dependencias y ejecuta PHPUnit:
+
+```bash
+composer install
+vendor/bin/phpunit
+```
+
 ## Licencia
 MIT

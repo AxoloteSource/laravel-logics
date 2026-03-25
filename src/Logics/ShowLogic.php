@@ -24,7 +24,6 @@ abstract class ShowLogic extends Logic
 
     protected function before(): bool
     {
-        $this->model = $this->model->find($this->input->id);
         $foundModel = $this->model->find($this->input->id);
 
         if (is_null($foundModel)) {

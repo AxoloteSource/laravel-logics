@@ -3,7 +3,7 @@
 namespace AxoloteSource\Logics\Logics\Flow\Traits;
 
 use AxoloteSource\Logics\Enums\Http;
-use Arr;
+use Illuminate\Support\Arr;
 use Illuminate\Http\JsonResponse;
 use Spatie\LaravelData\Data;
 

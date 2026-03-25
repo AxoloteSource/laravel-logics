@@ -20,5 +20,10 @@
         "illuminate/database": "^12.0",
         "illuminate/http": "^12.0",
         "spatie/laravel-data": "^4.11"
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "AxoloteSource\\Logics\\Tests\\": "tests/"
+        }
     }
 }

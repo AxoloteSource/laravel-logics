@@ -92,5 +92,14 @@ Example components of Flow:
 -   **Reusability**: Core logic is decoupled from controllers.
 -   **Extensibility**: Easily extend base classes to add custom behavior.
 
+## Testing
+
+To run the package tests, install dependencies and execute PHPUnit:
+
+```bash
+composer install
+vendor/bin/phpunit
+```
+
 ## License
 MIT
