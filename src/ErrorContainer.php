@@ -1,0 +1,27 @@
+<?php
+
+namespace AxoloteSource\Logics;
+
+use AxoloteSource\Logics\Enums\Http;
+
+class ErrorContainer
+{
+    public static array $error = [];
+
+    public static function error(
+        ?string $message = null,
+        ?array $data = null,
+        Http $status = Http::UnprocessableEntity
+    ): void {
+        self::$error = [
+            'message' => $message,
+            'data' => $data,
+            'status' => $status,
+        ];
+    }
+
+    public static function resetErrors(): void
+    {
+        self::$error = [];
+    }
+}

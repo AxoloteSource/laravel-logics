@@ -1,0 +1,24 @@
+{
+    "name": "axolote-source/laravel-logics",
+    "version": "1.0.0",
+    "description": "Logics library for Laravel projects",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "AxoloteSource\\Logics\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Luis Ozuna"
+        }
+    ],
+    "require": {
+        "php": "^8.4",
+        "illuminate/support": "^12.0",
+        "illuminate/database": "^12.0",
+        "illuminate/http": "^12.0",
+        "spatie/laravel-data": "^4.11"
+    }
+}
