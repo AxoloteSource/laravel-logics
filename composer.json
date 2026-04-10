@@ -29,5 +29,12 @@
     "require-dev": {
         "phpunit/phpunit": "^10.0 || ^11.0",
         "mockery/mockery": "^1.6"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "AxoloteSource\\Logics\\LogicsServiceProvider"
+            ]
+        }
     }
 }
