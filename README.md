@@ -13,6 +13,16 @@ You can install the package via composer:
 composer require axolote-source/laravel-logics
 ```
 
+## AI Agent Skills
+
+This package includes a command to install "skills" (rules and guides) for AI agents like Codex, Claude, and Junie. These skills help the AI understand how to work with the Logics in your project.
+
+To install the skills, run:
+
+```bash
+php artisan logics:install-skills
+```
+
 ## Core Concept: Logics
 
 Logics are classes that encapsulate a specific action on a model (or multiple models). They follow a predefined execution flow:

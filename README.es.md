@@ -13,6 +13,16 @@ Puedes instalar el paquete vía composer:
 composer require axolote-source/laravel-logics
 ```
 
+## Skills para Agentes de IA
+
+Este paquete incluye un comando para instalar "skills" (reglas y guías) para agentes de IA como Codex, Claude y Junie. Estos skills ayudan a la IA a entender cómo trabajar con los Logics en tu proyecto.
+
+Para instalar los skills, ejecuta:
+
+```bash
+php artisan logics:install-skills
+```
+
 ## Concepto Principal: Logics
 
 Los Logics son clases que encapsulan una acción específica sobre un modelo (o varios modelos). Siguen un flujo de ejecución predefinido:

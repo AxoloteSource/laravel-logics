@@ -7,9 +7,9 @@ use Illuminate\Support\Facades\File;
 
 class PublishSkillsCommand extends Command
 {
-    protected $signature = 'logics:publish-skills';
+    protected $signature = 'logics:install-skills';
 
-    protected $description = 'Publishes AI agent skill guides in the project';
+    protected $description = 'Installs AI agent skill guides in the project';
 
     public function handle()
     {
