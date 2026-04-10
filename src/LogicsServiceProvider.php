@@ -3,6 +3,7 @@
 namespace AxoloteSource\Logics;
 
 use AxoloteSource\Logics\Responses\ResponseMacros;
+use AxoloteSource\Logics\Commands;
 use Illuminate\Support\ServiceProvider;
 
 class LogicsServiceProvider extends ServiceProvider
@@ -21,5 +22,11 @@ class LogicsServiceProvider extends ServiceProvider
     public function boot(): void
     {
         ResponseMacros::register();
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                Commands\PublishSkillsCommand::class,
+            ]);
+        }
     }
 }
