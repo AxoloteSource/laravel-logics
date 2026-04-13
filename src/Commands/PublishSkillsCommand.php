@@ -26,51 +26,63 @@ class PublishSkillsCommand extends Command
             return;
         }
 
-        $sourcePath = __DIR__ . '/../../resources/skills/index_logic.md';
-        $content = File::get($sourcePath);
+        $skills = [
+            'index' => [
+                'source' => __DIR__ . '/../../resources/skills/index_logic.md',
+                'dir' => 'logics-index',
+            ],
+            'store' => [
+                'source' => __DIR__ . '/../../resources/skills/store_logic.md',
+                'dir' => 'logics-store',
+            ],
+        ];
 
-        if (in_array('Codex', $ias) || in_array('All', $ias)) {
-            $this->publishToCodex($content);
+        foreach ($skills as $skill) {
+            $content = File::get($skill['source']);
+
+            if (in_array('Codex', $ias) || in_array('All', $ias)) {
+                $this->publishToCodex($content, $skill['dir']);
+            }
+
+            if (in_array('Claude', $ias) || in_array('All', $ias)) {
+                $this->publishToClaude($content, $skill['dir']);
+            }
+
+            if (in_array('Junie', $ias) || in_array('All', $ias)) {
+                $this->publishToJunie($content, $skill['dir']);
+            }
         }
 
-        if (in_array('Claude', $ias) || in_array('All', $ias)) {
-            $this->publishToClaude($content);
-        }
-
-        if (in_array('Junie', $ias) || in_array('All', $ias)) {
-            $this->publishToJunie($content);
-        }
-
-        $this->info('Skills published successfully.');
+        $this->info('Skills installed successfully.');
     }
 
-    protected function publishToCodex(string $content)
+    protected function publishToCodex(string $content, string $skillDir)
     {
-        $dir = base_path('.agents/skills/logics-index');
+        $dir = base_path(".agents/skills/{$skillDir}");
         $path = $dir . '/SKILL.md';
         File::ensureDirectoryExists($dir);
         
         File::put($path, $content);
-        $this->line('Published for Codex: .agents/skills/logics-index/SKILL.md');
+        $this->line("Published for Codex: .agents/skills/{$skillDir}/SKILL.md");
     }
 
-    protected function publishToClaude(string $content)
+    protected function publishToClaude(string $content, string $skillDir)
     {
-        $dir = base_path('.claude/skills/logics-index');
+        $dir = base_path(".claude/skills/{$skillDir}");
         $path = $dir . '/SKILL.md';
         File::ensureDirectoryExists($dir);
         
         File::put($path, $content);
-        $this->line('Published for Claude: .claude/skills/logics-index/SKILL.md');
+        $this->line("Published for Claude: .claude/skills/{$skillDir}/SKILL.md");
     }
 
-    protected function publishToJunie(string $content)
+    protected function publishToJunie(string $content, string $skillDir)
     {
-        $dir = base_path('.junie/skills/logics-index');
+        $dir = base_path(".junie/skills/{$skillDir}");
         $path = $dir . '/SKILL.md';
         File::ensureDirectoryExists($dir);
         
         File::put($path, $content);
-        $this->line('Published for Junie: .junie/skills/logics-index/SKILL.md');
+        $this->line("Published for Junie: .junie/skills/{$skillDir}/SKILL.md");
     }
 }
