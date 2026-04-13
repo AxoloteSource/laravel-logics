@@ -35,6 +35,22 @@ class PublishSkillsCommand extends Command
                 'source' => __DIR__ . '/../../resources/skills/store_logic.md',
                 'dir' => 'logics-store',
             ],
+            'update' => [
+                'source' => __DIR__ . '/../../resources/skills/update_logic.md',
+                'dir' => 'logics-update',
+            ],
+            'show' => [
+                'source' => __DIR__ . '/../../resources/skills/show_logic.md',
+                'dir' => 'logics-show',
+            ],
+            'delete' => [
+                'source' => __DIR__ . '/../../resources/skills/delete_logic.md',
+                'dir' => 'logics-delete',
+            ],
+            'endpoint' => [
+                'source' => __DIR__ . '/../../resources/skills/endpoint_logic.md',
+                'dir' => 'logics-endpoint',
+            ],
         ];
 
         foreach ($skills as $skill) {
