@@ -15,13 +15,29 @@ composer require axolote-source/laravel-logics
 
 ## Skills para Agentes de IA
 
-Este paquete incluye un comando para instalar "skills" (reglas y guías) para agentes de IA como Codex, Claude y Junie. Estos skills ayudan a la IA a entender cómo trabajar con los Logics en tu proyecto.
+Este paquete incluye un comando para instalar "skills" (reglas y guías) para agentes de IA como Codex, Claude y Junie. Estos skills ayudan a la IA a entender cómo trabajar con los Logics en tu proyecto, proporcionando contexto sobre el ciclo de vida, validaciones y convenciones de nombres.
 
 Para instalar los skills, ejecuta:
 
 ```bash
 php artisan logics:install-skills
 ```
+
+### Skills Disponibles
+Una vez instalados, los siguientes skills estarán disponibles para tu agente de IA:
+
+- **logics-index**: Instrucciones para listar recursos, paginación y filtrado.
+- **logics-store**: Guía para crear nuevos recursos y llenado automático de modelos.
+- **logics-show**: Instrucciones para recuperar un solo registro.
+- **logics-update**: Guía para actualizar recursos existentes.
+- **logics-delete**: Instrucciones para eliminar registros (eliminación física o lógica).
+- **logics-endpoint**: Guía completa sobre cómo vincular rutas, controladores, permisos (`isAllow`) y requisitos para crear nuevas funcionalidades, incluyendo pruebas (tests).
+
+### Cómo usarlos
+Cuando usas un agente de IA (como Junie, Codex o Claude), este detectará automáticamente estas reglas si las soporta. También puedes pedirle explícitamente al agente:
+- "Crea un nuevo endpoint de index para el modelo Product usando el skill logics-index."
+- "Implementa un StoreLogic para el modelo Order siguiendo logics-store."
+- "Agrega una nueva ruta en `routes/modules/` y un permiso en `config/actions.php` usando la guía logics-endpoint."
 
 ## Concepto Principal: Logics
 
