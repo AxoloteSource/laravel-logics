@@ -57,7 +57,7 @@ trait FlowLogic
         }
 
         return $this->error(
-            __('No tienes permiso para acceder a este recurso'),
+            __('You do not have permission to access this resource'),
             ['action' => $action],
             Http::Forbidden
         );
