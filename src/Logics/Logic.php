@@ -30,6 +30,11 @@ abstract class Logic
 
     abstract protected function after(): bool;
 
+    protected function validations(): array
+    {
+        return [];
+    }
+
     protected function setResponse(array $response): void
     {
         $this->response = collect($response);
@@ -58,6 +63,16 @@ abstract class Logic
 
         if (! $this->before()) {
             return $this->getError();
+        }
+
+        foreach ($this->validations() as $validation) {
+            if (! is_callable($validation)) {
+                throw new \InvalidArgumentException('Validation must be a callable');
+            }
+
+            if (! call_user_func($validation)) {
+                return $this->getError();
+            }
         }
 
         $this->action();
