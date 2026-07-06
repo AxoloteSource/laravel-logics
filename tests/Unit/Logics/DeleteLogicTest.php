@@ -71,26 +71,7 @@ class DeleteLogicTest extends TestCase
         {
             public function run(Data $input): JsonResponse
             {
-                // Sobrescribimos action para evitar la asignación null a la propiedad tipada model
-                $this->input = $input;
-                if (! $this->before()) {
-                    return $this->getError();
-                }
-
-                $found = $this->makeQuery()->first();
-                if (! $found) {
-                    $this->response = null;
-                } else {
-                    $this->model = $found;
-                    $this->response = collect($this->model);
-                    $this->model->delete();
-                }
-
-                if (! $this->after()) {
-                    return $this->getError();
-                }
-
-                return $this->response();
+                return $this->logic($input);
             }
         };
 

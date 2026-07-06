@@ -4,13 +4,15 @@ namespace AxoloteSource\Logics\Logics;
 
 use AxoloteSource\Logics\CoreLogic;
 use AxoloteSource\Logics\Enums\Http;
+use AxoloteSource\Logics\Traits\ValidateNotFound;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Spatie\LaravelData\Data;
 
 abstract class UpdateLogic extends Logic
 {
-    use CoreLogic;
+    use CoreLogic, ValidateNotFound;
 
     public function __construct(?Model $model = null)
     {
@@ -24,30 +26,11 @@ abstract class UpdateLogic extends Logic
 
     protected function before(): bool
     {
-        $foundModel = $this->model->find($this->input->id);
-
-        if (is_null($foundModel)) {
-            return $this->error(message: 'Not Found', status: Http::NotFound);
-        }
-
-        $this->model = $foundModel;
-
         return true;
     }
 
     protected function action(): Logic
     {
-        if (! $this->model->exists) {
-            $foundModel = $this->model->find($this->input->id);
-            if (is_null($foundModel)) {
-                $this->error(message: 'Not Found', status: Http::NotFound);
-
-                return $this;
-            }
-
-            $this->model = $foundModel;
-        }
-
         $this->model->fill($this->input->toArray());
         $this->model->save();
         $this->response = collect($this->model);
@@ -58,5 +41,11 @@ abstract class UpdateLogic extends Logic
     protected function after(): bool
     {
         return true;
+    }
+
+    protected function makeQuery(): Builder
+    {
+        return $this->model->newQuery()
+            ->where('id', $this->input->id);
     }
 }

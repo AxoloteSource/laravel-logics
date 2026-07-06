@@ -3,6 +3,7 @@
 namespace AxoloteSource\Logics\Logics;
 
 use AxoloteSource\Logics\Enums\Http;
+use AxoloteSource\Logics\Traits\ValidateNotFound;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
@@ -11,6 +12,8 @@ use Spatie\LaravelData\Data;
 
 abstract class DeleteLogic extends Logic
 {
+    use ValidateNotFound;
+
     public function __construct(?Model $model = null)
     {
         if (is_null($model)) {
@@ -28,7 +31,6 @@ abstract class DeleteLogic extends Logic
 
     protected function action(): Logic
     {
-        $this->model = $this->makeQuery()->first();
         $this->response = collect($this->model);
         $this->model->delete();
 

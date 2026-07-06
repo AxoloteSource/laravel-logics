@@ -22,10 +22,6 @@ class ShowLogicTest extends TestCase
         $model = Mockery::mock(Model::class);
         $queryBuilder = Mockery::mock(Builder::class);
 
-        // Mock find in before()
-        $model->shouldReceive('find')->with(1)->andReturn($model);
-
-        // Mock makeQuery in action()
         $model->shouldReceive('newQuery')->andReturn($queryBuilder);
         $queryBuilder->shouldReceive('where')->with('id', 1)->andReturnSelf();
         $queryBuilder->shouldReceive('first')->andReturn($model);
@@ -47,7 +43,7 @@ class ShowLogicTest extends TestCase
         $this->assertEquals(1, $data['data']['id']);
     }
 
-    public function test_show_logic_returns_404_when_not_found_in_before()
+    public function test_show_logic_returns_404_when_not_found()
     {
         $input = new class extends Data
         {
@@ -55,9 +51,11 @@ class ShowLogicTest extends TestCase
         };
 
         $model = Mockery::mock(Model::class);
+        $queryBuilder = Mockery::mock(Builder::class);
 
-        // Simular que no se encuentra en find() dentro de before()
-        $model->shouldReceive('find')->with(999)->andReturn(null);
+        $model->shouldReceive('newQuery')->andReturn($queryBuilder);
+        $queryBuilder->shouldReceive('where')->with('id', 999)->andReturnSelf();
+        $queryBuilder->shouldReceive('first')->andReturn(null);
 
         $logic = new class($model) extends ShowLogic
         {

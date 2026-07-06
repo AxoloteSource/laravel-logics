@@ -30,6 +30,16 @@ abstract class Logic
 
     abstract protected function after(): bool;
 
+    /**
+     * Initialize any necessary state before the logic pipeline starts.
+     * This runs before `before()` and can be used to set up models,
+     * permissions, or any other pre-conditions.
+     */
+    protected function initializer(): bool
+    {
+        return true;
+    }
+
     protected function validations(): array
     {
         return [];
@@ -60,6 +70,10 @@ abstract class Logic
     final protected function logic(Data $input): JsonResponse|StreamedResponse|self
     {
         $this->input = $input;
+
+        if (! $this->initializer()) {
+            return $this->getError();
+        }
 
         if (! $this->before()) {
             return $this->getError();

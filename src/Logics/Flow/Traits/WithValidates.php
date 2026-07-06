@@ -11,12 +11,17 @@ trait WithValidates
 {
     abstract public function validates(): array;
 
-    protected function before(): bool
+    protected function initializer(): bool
     {
         $allowedModels = $this->allowedModels();
         $this->model = new $allowedModels[$this->modelRoute];
 
-        return parent::before();
+        return parent::initializer();
+    }
+
+    protected function before(): bool
+    {
+        return true;
     }
 
     public function run(Data|array $input): JsonResponse

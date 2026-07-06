@@ -4,6 +4,8 @@ namespace AxoloteSource\Logics\Tests\Unit\Logics\Flow;
 
 use AxoloteSource\Logics\Logics\Flow\FlowUpdateLogicBase;
 use AxoloteSource\Logics\Tests\TestCase;
+use Illuminate\Database\Eloquent\Builder;
+use Mockery;
 
 class FlowUpdateLogicTest extends TestCase
 {
@@ -13,11 +15,22 @@ class FlowUpdateLogicTest extends TestCase
 
         $modelClassName = 'TestModel'.uniqid();
         eval("class $modelClassName extends \Illuminate\Database\Eloquent\Model {
+            public static \$queryBuilder;
             protected \$fillable = ['id', 'name'];
+            public function newQuery() { return self::\$queryBuilder; }
             public function save(array \$options = []) { return true; }
-            public function find(\$id) { return \$this; }
             public function toArray() { return ['id' => \$this->id, 'name' => \$this->name]; }
         }");
+
+        $queryBuilder = Mockery::mock(Builder::class);
+        $modelClassName::$queryBuilder = $queryBuilder;
+
+        $modelInstance = new $modelClassName;
+        $modelInstance->id = 1;
+        $modelInstance->name = 'Updated Name';
+
+        $queryBuilder->shouldReceive('where')->with('id', 1)->andReturnSelf();
+        $queryBuilder->shouldReceive('first')->andReturn($modelInstance);
 
         $dataClassName = 'TestUpdateData'.uniqid();
         eval("class $dataClassName extends \Spatie\LaravelData\Data {

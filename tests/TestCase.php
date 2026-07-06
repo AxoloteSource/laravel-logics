@@ -2,6 +2,7 @@
 
 namespace AxoloteSource\Logics\Tests;
 
+use AxoloteSource\Logics\ErrorContainer;
 use Illuminate\Container\Container;
 use Illuminate\Http\JsonResponse;
 use Mockery;
@@ -12,6 +13,8 @@ abstract class TestCase extends BaseTestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        ErrorContainer::resetErrors();
 
         $this->setupContainer();
         $this->setupResponseFacade();

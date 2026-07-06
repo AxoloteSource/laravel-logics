@@ -3,6 +3,7 @@
 namespace AxoloteSource\Logics\Logics;
 
 use AxoloteSource\Logics\Enums\Http;
+use AxoloteSource\Logics\Traits\ValidateNotFound;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
@@ -12,6 +13,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 abstract class ShowLogic extends Logic
 {
+    use ValidateNotFound;
     public function __construct(?Model $model = null)
     {
         if (is_null($model)) {
@@ -24,27 +26,12 @@ abstract class ShowLogic extends Logic
 
     protected function before(): bool
     {
-        $foundModel = $this->model->find($this->input->id);
-
-        if (is_null($foundModel)) {
-            return $this->error(message: 'Not Found', status: Http::NotFound);
-        }
-
-        $this->model = $foundModel;
-
         return true;
     }
 
     protected function action(): self
     {
-        $foundModel = $this->makeQuery()->first();
-
-        if ($foundModel) {
-            $this->model = $foundModel;
-            $this->response = collect($this->model);
-        } else {
-            $this->response = null;
-        }
+        $this->response = collect($this->model);
 
         return $this;
     }

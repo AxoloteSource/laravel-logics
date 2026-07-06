@@ -4,6 +4,7 @@ namespace AxoloteSource\Logics\Tests\Unit\Logics;
 
 use AxoloteSource\Logics\Logics\UpdateLogic;
 use AxoloteSource\Logics\Tests\TestCase;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Mockery;
@@ -29,10 +30,11 @@ class UpdateLogicTest extends TestCase
         };
 
         $model = Mockery::mock(Model::class);
-        $model->exists = true;
+        $queryBuilder = Mockery::mock(Builder::class);
 
-        // Mock find in before()
-        $model->shouldReceive('find')->with(1)->andReturn($model);
+        $model->shouldReceive('newQuery')->andReturn($queryBuilder);
+        $queryBuilder->shouldReceive('where')->with('id', 1)->andReturnSelf();
+        $queryBuilder->shouldReceive('first')->andReturn($model);
 
         // Mock fill and save in action()
         $model->shouldReceive('fill')->with($inputData)->andReturnSelf();
@@ -71,7 +73,11 @@ class UpdateLogicTest extends TestCase
         };
 
         $model = Mockery::mock(Model::class);
-        $model->shouldReceive('find')->with(999)->andReturn(null);
+        $queryBuilder = Mockery::mock(Builder::class);
+
+        $model->shouldReceive('newQuery')->andReturn($queryBuilder);
+        $queryBuilder->shouldReceive('where')->with('id', 999)->andReturnSelf();
+        $queryBuilder->shouldReceive('first')->andReturn(null);
 
         $logic = new class($model) extends UpdateLogic
         {
