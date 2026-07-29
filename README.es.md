@@ -81,6 +81,51 @@ Se utiliza para listar recursos. Incluye soporte integrado para:
 -   **Paginación**: Manejo automático de `limit` y `page`.
 -   **Filtrado**: Sistema flexible para aplicar filtros a la consulta.
 -   **Búsqueda**: Funcionalidad de búsqueda básica en una columna especificada.
+-   **Ordenamiento**: Ordena los resultados por una columna y dirección dadas.
+
+#### Ordenamiento
+
+El input `IndexData` acepta dos parámetros para ordenar los resultados:
+
+| Parámetro  | Tipo   | Por defecto | Descripción                                                              |
+|------------|--------|-------------|--------------------------------------------------------------------------|
+| `order_by` | string | `id`        | La columna (o alias) por la que se va a ordenar.                         |
+| `order`    | string | `asc`       | La dirección del ordenamiento: `asc` o `desc`.                           |
+
+El `IndexLogic` expone dos propiedades protegidas para controlar qué campos están permitidos y cómo se mapean:
+
+- `protected array $allowOrderByFields = [];` — Lista blanca de columnas de la base de datos que pueden usarse para ordenar. Cuando está vacía, se permite **cualquier** columna.
+- `protected array $aliasOrderBy = [];` — Mapa de alias (`'alias' => 'columna_real'`). Si el `order_by` recibido coincide con una key, se traduce a la columna correspondiente de la base de datos antes de aplicarse.
+
+El ordenamiento también soporta columnas de relaciones mediante la notación con punto `relacion.columna` (por ejemplo `user.name`), realizando automáticamente el join de la tabla relacionada cuando es necesario.
+
+```php
+class ProductIndexLogic extends IndexLogic
+{
+    public function __construct()
+    {
+        parent::__construct(new Product());
+    }
+
+    protected array $allowOrderByFields = ['id', 'name', 'price', 'category_name'];
+
+    protected array $aliasOrderBy = [
+        'category_name' => 'category.name',
+    ];
+
+    public function run(Data $input): JsonResponse
+    {
+        return $this->logic($input);
+    }
+}
+```
+
+Ejemplo de petición:
+
+```
+GET /products?order_by=name&order=desc
+GET /products?order_by=category_name&order=asc
+```
 
 ### 2. StoreLogic
 Se utiliza para crear nuevos recursos. Maneja:

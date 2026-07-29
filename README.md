@@ -81,6 +81,51 @@ Used for listing resources. It includes built-in support for:
 -   **Pagination**: Automatic handling of `limit` and `page`.
 -   **Filtering**: Flexible system for applying filters to the query.
 -   **Search**: Basic search functionality on a specified column.
+-   **Ordering**: Sort results by a given column and direction.
+
+#### Ordering
+
+The `IndexData` input accepts two parameters for sorting the results:
+
+| Parameter  | Type   | Default | Description                                                          |
+|------------|--------|---------|----------------------------------------------------------------------|
+| `order_by` | string | `id`    | The column (or alias) to sort by.                                    |
+| `order`    | string | `asc`   | The sort direction: `asc` or `desc`.                                |
+
+The `IndexLogic` exposes two protected properties to control which fields are allowed and how they are mapped:
+
+- `protected array $allowOrderByFields = [];` — Allowlist of database columns that can be used for sorting. When empty, **any** column is allowed.
+- `protected array $aliasOrderBy = [];` — Map of aliases (`'alias' => 'real_column'`). If the provided `order_by` matches a key, it is translated to the corresponding database column before being applied.
+
+Ordering also supports related columns using the dot notation `relation.column` (e.g. `user.name`), automatically joining the related table when needed.
+
+```php
+class ProductIndexLogic extends IndexLogic
+{
+    public function __construct()
+    {
+        parent::__construct(new Product());
+    }
+
+    protected array $allowOrderByFields = ['id', 'name', 'price', 'category_name'];
+
+    protected array $aliasOrderBy = [
+        'category_name' => 'category.name',
+    ];
+
+    public function run(Data $input): JsonResponse
+    {
+        return $this->logic($input);
+    }
+}
+```
+
+Request example:
+
+```
+GET /products?order_by=name&order=desc
+GET /products?order_by=category_name&order=asc
+```
 
 ### 2. StoreLogic
 Used for creating new resources. It handles:

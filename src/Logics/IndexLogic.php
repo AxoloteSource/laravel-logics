@@ -18,6 +18,10 @@ abstract class IndexLogic extends Logic
 
     protected bool $withPagination = true;
 
+    protected array $allowOrderByFields = [];
+
+    protected array $aliasOrderBy = [];
+
     public function __construct(?Model $model = null)
     {
         if (is_null($model)) {
@@ -45,6 +49,22 @@ abstract class IndexLogic extends Logic
 
         if (isset($this->input->search)) {
             $this->queryBuilder = $this->runQueryWithSearch($this->input->search);
+        }
+
+        if (isset($this->input->order_by)) {
+            $orderBy = $this->input->order_by;
+
+            if (isset($this->aliasOrderBy[$orderBy])) {
+                $orderBy = $this->aliasOrderBy[$orderBy];
+            }
+
+            if (empty($this->allowOrderByFields) || in_array($orderBy, $this->allowOrderByFields)) {
+                $this->queryBuilder = $this->runQueryWithOrder(
+                    $this->queryBuilder,
+                    $orderBy,
+                    $this->input->order ?? 'asc'
+                );
+            }
         }
 
         $this->queryBuilder->with($this->withRelations());
@@ -105,6 +125,68 @@ abstract class IndexLogic extends Logic
         }
 
         return $this->queryBuilder->where($this->getColumnSearch(), 'like', "%{$search}%");
+    }
+
+    public function runQueryWithOrder(Builder $queryBuilder, string $orderBy, string $direction = 'asc'): Builder
+    {
+        if (str_contains($orderBy, '.')) {
+            return $this->applyOrderByRelation($queryBuilder, $orderBy, $direction);
+        }
+
+        return $queryBuilder->orderBy($orderBy, $direction);
+    }
+
+    protected function applyOrderByRelation(Builder $queryBuilder, string $orderBy, string $direction): Builder
+    {
+        $parts = explode('.', $orderBy);
+        $column = array_pop($parts);
+        $relations = $parts;
+
+        $currentModel = $this->model;
+        $currentTable = $currentModel->getTable();
+        $baseTable = $currentTable;
+
+        $queryBuilder->select("{$baseTable}.*");
+
+        foreach ($relations as $index => $relationName) {
+            if (! method_exists($currentModel, $relationName)) {
+                return $queryBuilder->orderBy($orderBy, $direction);
+            }
+
+            $relation = $currentModel->$relationName();
+            $relatedModel = $relation->getRelated();
+            $relatedTable = $relatedModel->getTable();
+            $relatedAlias = "{$relationName}_{$index}";
+
+            if ($relation instanceof \Illuminate\Database\Eloquent\Relations\BelongsTo) {
+                $ownerKey = $relation->getOwnerKeyName();
+                $foreignKey = $relation->getForeignKeyName();
+
+                $queryBuilder->leftJoin(
+                    "{$relatedTable} as {$relatedAlias}",
+                    "{$relatedAlias}.{$ownerKey}",
+                    '=',
+                    "{$currentTable}.{$foreignKey}"
+                );
+            } elseif ($relation instanceof \Illuminate\Database\Eloquent\Relations\HasOne) {
+                $localKey = $relation->getLocalKeyName();
+                $foreignKey = $relation->getForeignKeyName();
+
+                $queryBuilder->leftJoin(
+                    "{$relatedTable} as {$relatedAlias}",
+                    "{$relatedAlias}.{$foreignKey}",
+                    '=',
+                    "{$currentTable}.{$localKey}"
+                );
+            } else {
+                return $queryBuilder->orderBy($orderBy, $direction);
+            }
+
+            $currentModel = $relatedModel;
+            $currentTable = $relatedAlias;
+        }
+
+        return $queryBuilder->orderBy("{$currentTable}.{$column}", $direction);
     }
 
     protected function getColumnSearch(): string
