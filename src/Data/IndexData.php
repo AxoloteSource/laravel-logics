@@ -12,6 +12,8 @@ class IndexData extends Data
 
     public ?string $order = 'asc';
 
+    public ?string $order_by = 'id';
+
     public ?array $filters = [];
 
     public ?string $search = null;
