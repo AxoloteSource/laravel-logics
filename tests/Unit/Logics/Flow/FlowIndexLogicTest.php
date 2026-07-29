@@ -27,6 +27,7 @@ class FlowIndexLogicTest extends TestCase
 
         $queryBuilder->shouldReceive('where')->with('custom_col', 'like', '%term%')->andReturnSelf();
         $queryBuilder->shouldReceive('with')->with([])->andReturnSelf();
+        $queryBuilder->shouldReceive('orderBy')->andReturnSelf();
 
         $paginator = Mockery::mock(\Illuminate\Pagination\LengthAwarePaginator::class);
         $paginator->shouldReceive('getCollection')->andReturn(new Collection);
@@ -103,6 +104,7 @@ class FlowIndexLogicTest extends TestCase
         ];
 
         $queryBuilder->shouldReceive('with')->with([])->andReturnSelf();
+        $queryBuilder->shouldReceive('orderBy')->andReturnSelf();
 
         $paginator = Mockery::mock(\Illuminate\Pagination\LengthAwarePaginator::class);
         $paginator->shouldReceive('getCollection')->andReturn(new Collection);
@@ -180,6 +182,7 @@ class FlowIndexLogicTest extends TestCase
 
         $queryBuilder->shouldReceive('where')->with('custom_col', 'like', '%term%')->andReturnSelf();
         $queryBuilder->shouldReceive('with')->with([])->andReturnSelf();
+        $queryBuilder->shouldReceive('orderBy')->andReturnSelf();
 
         $paginator = Mockery::mock(\Illuminate\Pagination\LengthAwarePaginator::class);
         $paginator->shouldReceive('getCollection')->andReturn(new Collection);
@@ -261,6 +264,7 @@ class FlowIndexLogicTest extends TestCase
         };
 
         $queryBuilder->shouldReceive('with')->with([])->andReturnSelf();
+        $queryBuilder->shouldReceive('orderBy')->andReturnSelf();
 
         $paginator = Mockery::mock(\Illuminate\Pagination\LengthAwarePaginator::class);
         $paginator->shouldReceive('getCollection')->andReturn(new Collection);
@@ -334,6 +338,7 @@ class FlowIndexLogicTest extends TestCase
 
         $queryBuilder->shouldReceive('where')->with('custom_col', 'like', '%term%')->andReturnSelf();
         $queryBuilder->shouldReceive('with')->with([])->andReturnSelf();
+        $queryBuilder->shouldReceive('orderBy')->andReturnSelf();
 
         $paginator = Mockery::mock(\Illuminate\Pagination\LengthAwarePaginator::class);
         $paginator->shouldReceive('getCollection')->andReturn(new Collection);
