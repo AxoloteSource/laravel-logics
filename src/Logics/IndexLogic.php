@@ -208,6 +208,21 @@ abstract class IndexLogic extends Logic
         return [];
     }
 
+    /**
+     * List of column accessors that are allowed to be sorted by the frontend.
+     * When empty, all columns are considered sortable.
+     *
+     * @return array<int, string>
+     */
+    protected function sortableColumns(): array
+    {
+        if (empty($this->allowOrderByFields)) {
+            return [];
+        }
+
+        return array_merge($this->allowOrderByFields, array_keys($this->aliasOrderBy));
+    }
+
     protected function response(): JsonResponse
     {
         if ($this->withPagination) {
@@ -218,7 +233,8 @@ abstract class IndexLogic extends Logic
                     $this->pagination->perPage(),
                     $this->pagination->currentPage()
                 ),
-                $this->tableHeaders()
+                $this->tableHeaders(),
+                $this->sortableColumns()
             );
         }
 

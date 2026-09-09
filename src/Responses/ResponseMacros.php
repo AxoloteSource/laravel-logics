@@ -32,12 +32,14 @@ class ResponseMacros
             'successDataTableNotPaginate',
             function (
                 array|bool|Model|Collection|JsonResource $data,
-                array $tableHeaders
+                array $tableHeaders,
+                array $sortableColumns = []
             ): JsonResponse {
-                $columns = collect($tableHeaders)->map(function (mixed $value, string $key) {
+                $columns = collect($tableHeaders)->map(function (mixed $value, string $key) use ($sortableColumns) {
                     return [
                         'accessor' => $key,
                         'title' => $value,
+                        'sortable' => empty($sortableColumns) || in_array($key, $sortableColumns),
                     ];
                 })->values();
 
@@ -64,13 +66,15 @@ class ResponseMacros
             'successDataTable',
             function (
                 ?LengthAwarePaginator $data,
-                array $tableHeaders
+                array $tableHeaders,
+                array $sortableColumns = []
             ): JsonResponse {
                 $data = collect($data->toArray())->merge([
-                    'columns' => collect($tableHeaders)->map(function (mixed $value, string $key) {
+                    'columns' => collect($tableHeaders)->map(function (mixed $value, string $key) use ($sortableColumns) {
                         return [
                             'accessor' => $key,
                             'title' => $value,
+                            'sortable' => empty($sortableColumns) || in_array($key, $sortableColumns),
                         ];
                     })->values(),
                 ]);

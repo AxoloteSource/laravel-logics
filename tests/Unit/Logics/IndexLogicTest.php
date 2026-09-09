@@ -547,4 +547,46 @@ class IndexLogicTest extends TestCase
         $result = $logic->runQueryWithOrder($queryBuilder, 'nonexistent.column', 'asc');
         $this->assertSame($queryBuilder, $result);
     }
+
+    public function test_index_logic_sortable_columns_returns_all_when_allow_empty()
+    {
+        $logic = new class extends IndexLogic
+        {
+            public function run(Data $input): JsonResponse
+            {
+                // @phpstan-ignore-next-line
+                return $this->logic($input);
+            }
+
+            public function exposedSortableColumns(): array
+            {
+                return $this->sortableColumns();
+            }
+        };
+
+        $this->assertSame([], $logic->exposedSortableColumns());
+    }
+
+    public function test_index_logic_sortable_columns_merges_allowed_fields_and_alias_keys()
+    {
+        $logic = new class extends IndexLogic
+        {
+            public function run(Data $input): JsonResponse
+            {
+                // @phpstan-ignore-next-line
+                return $this->logic($input);
+            }
+
+            protected array $allowOrderByFields = ['id', 'name', 'price'];
+
+            protected array $aliasOrderBy = ['category_name' => 'category.name'];
+
+            public function exposedSortableColumns(): array
+            {
+                return $this->sortableColumns();
+            }
+        };
+
+        $this->assertSame(['id', 'name', 'price', 'category_name'], $logic->exposedSortableColumns());
+    }
 }
