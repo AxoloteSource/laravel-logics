@@ -67,13 +67,12 @@ abstract class TestCase extends BaseTestCase
         })->byDefault();
 
         // Soporte para successDataTable que usa IndexLogic
-        $responseMock->shouldReceive('successDataTable')->andReturnUsing(function ($data = null, $headers = [], $status = 200) {
-            $statusCode = $status instanceof \UnitEnum ? $status->value : $status;
-
+        $responseMock->shouldReceive('successDataTable')->andReturnUsing(function ($data = null, $headers = [], $sortableColumns = []) {
             return $this->createMockJsonResponse([
                 'data' => $data,
                 'headers' => $headers,
-            ], $statusCode);
+                'sortable_columns' => $sortableColumns,
+            ], 200);
         })->byDefault();
     }
 
