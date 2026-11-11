@@ -59,7 +59,7 @@ public function action(): self
     return $this;
 }
 ```
-You can override `action()` if you need more complex creation logic.
+**Do not override `action()` unless it is strictly necessary.** The default implementation already persists the model from `$this->input`. For validations and data preparation, declare the needed properties on the `Data` class and set them on `$this->input` inside `before()` or `validations()`. Only override `action()` when the operation does not map to creating/updating/deleting the injected model.
 
 #### 5. Post-Action Logic with `after()`
 Executed after the model has been saved to the database. Useful for side effects.

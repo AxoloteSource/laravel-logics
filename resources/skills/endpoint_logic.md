@@ -102,8 +102,59 @@ class CouponController extends Controller
         return $logic->run($data);
     }
 }
+```
 
-#### 6. Testing Requirements
+#### 6. Do Not Override `action()`
+
+The base `action()` already fills and saves the injected model using `$this->input`:
+
+```php
+$this->model->fill($this->input->toArray())->save();
+```
+
+**Never override `action()` unless it is strictly necessary** (for example, when the operation does not create, update, or delete the injected model, such as creating a different resource).
+
+When you need to validate or prepare data before the model is saved:
+
+1. Declare the required properties on the `Data` class. Use `#[Rule(['prohibited'])]` for fields that must not come from the request.
+2. Validate business rules and initialize those properties on `$this->input` inside `before()` or in the callbacks returned by `validations()`.
+3. Let the base `action()` persist the model.
+
+```php
+class CouponStoreData extends Data
+{
+    #[Rule(['prohibited'])]
+    public ?string $application_id = null;
+
+    #[Rule(['prohibited'])]
+    public bool $active = true;
+
+    public function __construct(
+        #[FromRouteParameter('applicationId'), Rule(['required', 'exists:applications,id'])]
+        public string $applicationId,
+        #[Rule(['required', 'string', 'max:255'])]
+        public string $name,
+    ) {}
+}
+
+class CouponStoreLogic extends StoreLogic
+{
+    protected function before(): bool
+    {
+        $this->input->application_id = Application::query()
+            ->where('active', true)
+            ->findOrFail($this->input->applicationId)
+            ->id;
+
+        $this->input->name = trim($this->input->name);
+        $this->input->active = true;
+
+        return true;
+    }
+}
+```
+
+#### 7. Testing Requirements
 Whenever you create a new endpoint, you MUST create a corresponding feature test to verify its behavior.
 
 **Test Location:**
