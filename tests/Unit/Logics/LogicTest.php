@@ -108,6 +108,41 @@ class LogicTest extends TestCase
         $this->assertEquals(500, $response->getStatusCode());
     }
 
+    public function test_logic_returns_error_when_action_sets_an_error()
+    {
+        $input = new class extends Data {};
+
+        $logic = new class extends Logic
+        {
+            protected function before(): bool
+            {
+                return true;
+            }
+
+            protected function action(): Logic
+            {
+                $this->error('Action failed');
+
+                return $this;
+            }
+
+            protected function after(): bool
+            {
+                throw new \RuntimeException('After should not run when action has errors.');
+            }
+
+            public function run(Data $input): JsonResponse
+            {
+                return $this->logic($input);
+            }
+        };
+
+        $response = $logic->run($input);
+
+        $this->assertEquals(422, $response->getStatusCode());
+        $this->assertSame('Action failed', $response->getData(true)['message']);
+    }
+
     public function test_all_validations_pass_continues_flow()
     {
         $input = new class extends Data {};

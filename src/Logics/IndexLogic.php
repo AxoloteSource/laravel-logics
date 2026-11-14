@@ -22,6 +22,33 @@ abstract class IndexLogic extends Logic
 
     protected array $aliasOrderBy = [];
 
+    /**
+     * Filter properties that must never be applied.
+     *
+     * @var array<int, string>
+     */
+    protected array $disallowedFilterProperties = [
+        'deleted_at',
+        'password',
+    ];
+
+    /**
+     * Filter operators that must never be applied.
+     *
+     * @var array<int, string>
+     */
+    protected array $disallowedFilterOperators = [
+        'regexp',
+        'rlike',
+        'not regexp',
+        'not rlike',
+    ];
+
+    /**
+     * Maximum number of filters to apply. Null means no limit.
+     */
+    protected ?int $maxFilters = null;
+
     public function __construct(?Model $model = null)
     {
         if (is_null($model)) {
@@ -39,6 +66,10 @@ abstract class IndexLogic extends Logic
 
     public function action(): self
     {
+        if (isset($this->input->filters) && ! $this->validateFilters($this->input->filters)) {
+            return $this;
+        }
+
         $limit = $this->input->limit ?? 15;
         $page = $this->input->page ?? 1;
         $this->queryBuilder = $this->makeQuery();
@@ -114,6 +145,38 @@ abstract class IndexLogic extends Logic
         }
 
         return $this->queryBuilder;
+    }
+
+    protected function validateFilters(array $filters): bool
+    {
+        if (! is_null($this->maxFilters) && count($filters) > $this->maxFilters) {
+            return $this->error(__('Too many filters: the maximum is :max.', [
+                'max' => $this->maxFilters,
+            ]));
+        }
+
+        $disallowedOperators = array_map('strtolower', $this->disallowedFilterOperators);
+
+        foreach ($filters as $filterData) {
+            $property = (string) ($filterData['property'] ?? '');
+            $operator = strtolower((string) ($filterData['operator'] ?? '='));
+
+            foreach (explode('|', $property) as $item) {
+                if (in_array($item, $this->disallowedFilterProperties, true)) {
+                    return $this->error(__('The filter property ":property" is not allowed.', [
+                        'property' => $item,
+                    ]));
+                }
+            }
+
+            if (in_array($operator, $disallowedOperators, true)) {
+                return $this->error(__('The filter operator ":operator" is not allowed.', [
+                    'operator' => $operator,
+                ]));
+            }
+        }
+
+        return true;
     }
 
     public function runQueryWithSearch(string $search): Builder

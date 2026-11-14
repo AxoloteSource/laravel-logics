@@ -27,3 +27,14 @@ if (! function_exists('config')) {
         return Container::getInstance()->make('config')->get($key, $default);
     }
 }
+
+if (! function_exists('__')) {
+    function __(string $key, array $replace = [], ?string $locale = null): string
+    {
+        foreach ($replace as $search => $value) {
+            $key = str_replace(':'.$search, $value, $key);
+        }
+
+        return $key;
+    }
+}

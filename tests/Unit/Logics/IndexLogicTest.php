@@ -96,6 +96,172 @@ class IndexLogicTest extends TestCase
         $this->assertEquals(200, $response->getStatusCode());
     }
 
+    public function test_index_logic_rejects_disallowed_filter_properties()
+    {
+        $input = new class extends Data
+        {
+            public array $filters = [
+                ['property' => 'secret', 'value' => 'x', 'operator' => '='],
+            ];
+        };
+
+        $model = Mockery::mock(Model::class);
+
+        $logic = new class($model) extends IndexLogic
+        {
+            public function run(Data $input): JsonResponse
+            {
+                // @phpstan-ignore-next-line
+                return $this->logic($input);
+            }
+
+            protected array $disallowedFilterProperties = ['secret'];
+        };
+
+        $response = $logic->run($input);
+
+        $this->assertEquals(422, $response->getStatusCode());
+        $this->assertSame('The filter property "secret" is not allowed.', $response->getData(true)['message']);
+    }
+
+    public function test_index_logic_rejects_default_disallowed_filter_properties()
+    {
+        $input = new class extends Data
+        {
+            public array $filters = [
+                ['property' => 'password', 'value' => 'secret', 'operator' => '='],
+            ];
+        };
+
+        $model = Mockery::mock(Model::class);
+
+        $logic = new class($model) extends IndexLogic
+        {
+            public function run(Data $input): JsonResponse
+            {
+                // @phpstan-ignore-next-line
+                return $this->logic($input);
+            }
+        };
+
+        $response = $logic->run($input);
+
+        $this->assertEquals(422, $response->getStatusCode());
+        $this->assertSame('The filter property "password" is not allowed.', $response->getData(true)['message']);
+    }
+
+    public function test_index_logic_rejects_default_disallowed_filter_operators()
+    {
+        $input = new class extends Data
+        {
+            public array $filters = [
+                ['property' => 'name', 'value' => 'pattern', 'operator' => 'rlike'],
+            ];
+        };
+
+        $model = Mockery::mock(Model::class);
+
+        $logic = new class($model) extends IndexLogic
+        {
+            public function run(Data $input): JsonResponse
+            {
+                // @phpstan-ignore-next-line
+                return $this->logic($input);
+            }
+        };
+
+        $response = $logic->run($input);
+
+        $this->assertEquals(422, $response->getStatusCode());
+        $this->assertSame('The filter operator "rlike" is not allowed.', $response->getData(true)['message']);
+    }
+
+    public function test_index_logic_rejects_disallowed_filter_operators_case_insensitively()
+    {
+        $input = new class extends Data
+        {
+            public array $filters = [
+                ['property' => 'name', 'value' => 'pattern', 'operator' => 'REGEXP'],
+            ];
+        };
+
+        $model = Mockery::mock(Model::class);
+
+        $logic = new class($model) extends IndexLogic
+        {
+            public function run(Data $input): JsonResponse
+            {
+                // @phpstan-ignore-next-line
+                return $this->logic($input);
+            }
+
+            protected array $disallowedFilterOperators = ['regexp'];
+        };
+
+        $response = $logic->run($input);
+
+        $this->assertEquals(422, $response->getStatusCode());
+        $this->assertSame('The filter operator "regexp" is not allowed.', $response->getData(true)['message']);
+    }
+
+    public function test_index_logic_rejects_multi_property_filter_when_one_property_is_disallowed()
+    {
+        $input = new class extends Data
+        {
+            public array $filters = [
+                ['property' => 'name|secret', 'value' => 'x', 'operator' => '='],
+            ];
+        };
+
+        $model = Mockery::mock(Model::class);
+
+        $logic = new class($model) extends IndexLogic
+        {
+            public function run(Data $input): JsonResponse
+            {
+                // @phpstan-ignore-next-line
+                return $this->logic($input);
+            }
+
+            protected array $disallowedFilterProperties = ['secret'];
+        };
+
+        $response = $logic->run($input);
+
+        $this->assertEquals(422, $response->getStatusCode());
+        $this->assertSame('The filter property "secret" is not allowed.', $response->getData(true)['message']);
+    }
+
+    public function test_index_logic_rejects_filters_when_max_filters_is_exceeded()
+    {
+        $input = new class extends Data
+        {
+            public array $filters = [
+                ['property' => 'name', 'value' => 'John', 'operator' => '='],
+                ['property' => 'email', 'value' => 'john@example.com', 'operator' => '='],
+                ['property' => 'status', 'value' => 'active', 'operator' => '='],
+            ];
+        };
+
+        $model = Mockery::mock(Model::class);
+
+        $logic = new class($model) extends IndexLogic
+        {
+            public function run(Data $input): JsonResponse
+            {
+                // @phpstan-ignore-next-line
+                return $this->logic($input);
+            }
+
+            protected ?int $maxFilters = 2;
+        };
+
+        $response = $logic->run($input);
+
+        $this->assertEquals(422, $response->getStatusCode());
+        $this->assertSame('Too many filters: the maximum is 2.', $response->getData(true)['message']);
+    }
+
     public function test_index_logic_with_search()
     {
         $input = new class extends Data

@@ -69,6 +69,8 @@ abstract class Logic
 
     final protected function logic(Data $input): JsonResponse|StreamedResponse|self
     {
+        ErrorContainer::resetErrors();
+
         $this->input = $input;
 
         if (! $this->initializer()) {
@@ -90,6 +92,10 @@ abstract class Logic
         }
 
         $this->action();
+
+        if ($this->hasErrors()) {
+            return $this->getError();
+        }
 
         if (! $this->after()) {
             return $this->getError();
