@@ -131,6 +131,15 @@ protected function after(): bool
 }
 ```
 
+#### 9. Relation Ordering with `allowOrderByFields`
+When the frontend sends `order_by=relation.column`, `IndexLogic` only dispatches the relation if its name is declared in `allowOrderByFields`. This prevents `order_by` from invoking arbitrary model methods such as `save`, `push`, `touch` or `delete`.
+
+```php
+protected array $allowOrderByFields = ['id', 'name', 'user', 'category'];
+```
+
+For nested relations, declare every segment (`['user', 'company']` allows `user.company.name`). When `allowOrderByFields` is empty, plain columns are allowed but relations are denied. If a relation is not declared, the order falls back to a plain `orderBy('relation.column')` and the relation method is never invoked.
+
 #### Full Implementation Example
 The `IndexData` object is generally used as the input for these logics to handle pagination, sorting, and searching.
 

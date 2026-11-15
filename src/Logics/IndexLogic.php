@@ -5,6 +5,7 @@ namespace AxoloteSource\Logics\Logics;
 use AxoloteSource\Logics\Classes\Filter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Response;
@@ -103,7 +104,7 @@ abstract class IndexLogic extends Logic
                 $orderBy = $this->aliasOrderBy[$orderBy];
             }
 
-            if (empty($this->allowOrderByFields) || in_array($orderBy, $this->allowOrderByFields)) {
+            if ($this->isOrderByAllowed($orderBy)) {
                 if (! $this->isFilterPropertyAllowed($orderBy)) {
                     $this->error(__('The filter property ":property" is not allowed.', [
                         'property' => $orderBy,
@@ -248,6 +249,32 @@ abstract class IndexLogic extends Logic
         return $queryBuilder->orderBy($orderBy, $direction);
     }
 
+    protected function isOrderByAllowed(string $orderBy): bool
+    {
+        if ($this->allowOrderByFields === []) {
+            return true;
+        }
+
+        if (in_array($orderBy, $this->allowOrderByFields, true)) {
+            return true;
+        }
+
+        if (! str_contains($orderBy, '.')) {
+            return false;
+        }
+
+        $relations = explode('.', $orderBy);
+        array_pop($relations);
+
+        foreach ($relations as $relation) {
+            if (! in_array($relation, $this->allowOrderByFields, true)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     protected function applyOrderByRelation(Builder $queryBuilder, string $orderBy, string $direction): Builder
     {
         $parts = explode('.', $orderBy);
@@ -261,11 +288,17 @@ abstract class IndexLogic extends Logic
         $queryBuilder->select("{$baseTable}.*");
 
         foreach ($relations as $index => $relationName) {
-            if (! method_exists($currentModel, $relationName)) {
+            if (! in_array($relationName, $this->allowOrderByFields, true)
+                || ! method_exists($currentModel, $relationName)) {
                 return $queryBuilder->orderBy($orderBy, $direction);
             }
 
-            $relation = $currentModel->$relationName();
+            $relation = $currentModel->{$relationName}();
+
+            if (! $relation instanceof Relation) {
+                return $queryBuilder->orderBy($orderBy, $direction);
+            }
+
             $relatedModel = $relation->getRelated();
             $relatedTable = $relatedModel->getTable();
             $relatedAlias = "{$relationName}_{$index}";

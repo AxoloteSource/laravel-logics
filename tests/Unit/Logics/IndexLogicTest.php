@@ -618,6 +618,8 @@ class IndexLogicTest extends TestCase
                 'category_name' => 'category.name',
             ];
 
+            protected array $allowOrderByFields = ['category'];
+
             public function makeQuery(): Builder
             {
                 return $this->qb;
@@ -767,6 +769,8 @@ class IndexLogicTest extends TestCase
 
         $logic = new class(new $postClass()) extends IndexLogic
         {
+            protected array $allowOrderByFields = ['user'];
+
             public function run(Data $input): JsonResponse
             {
                 // @phpstan-ignore-next-line
@@ -810,6 +814,8 @@ class IndexLogicTest extends TestCase
 
         $logic = new class(new $userClass()) extends IndexLogic
         {
+            protected array $allowOrderByFields = ['profile'];
+
             public function run(Data $input): JsonResponse
             {
                 // @phpstan-ignore-next-line
@@ -852,6 +858,74 @@ class IndexLogicTest extends TestCase
         // @phpstan-ignore-next-line
         $result = $logic->runQueryWithOrder($queryBuilder, 'nonexistent.column', 'asc');
         $this->assertSame($queryBuilder, $result);
+    }
+
+    public function test_index_logic_order_by_does_not_dispatch_model_write_methods()
+    {
+        $modelClass = 'IndexEventWriteModel'.uniqid();
+
+        eval("class $modelClass extends \\Illuminate\\Database\\Eloquent\\Model {
+            public static int \$writeCalls = 0;
+            protected \$table = 'events';
+            protected \$fillable = ['note'];
+            public \$timestamps = false;
+            public function save(array \$options = []) { static::\$writeCalls++; return true; }
+            public function push() { static::\$writeCalls++; return true; }
+            public function touch(\$attribute = null) { static::\$writeCalls++; return true; }
+            public function saveOrFail(array \$options = []) { static::\$writeCalls++; return true; }
+            public function delete() { static::\$writeCalls++; return true; }
+        }");
+
+        $queryBuilder = Mockery::mock(Builder::class);
+        $queryBuilder->shouldReceive('select')->andReturnSelf();
+        $queryBuilder->shouldReceive('orderBy')->andReturnSelf();
+
+        $logic = new class(new $modelClass()) extends IndexLogic
+        {
+            public function run(Data $input): JsonResponse
+            {
+                // @phpstan-ignore-next-line
+                return $this->logic($input);
+            }
+        };
+
+        foreach (['save.id', 'push.id', 'touch.id', 'saveOrFail.id', 'delete.id'] as $orderBy) {
+            // @phpstan-ignore-next-line
+            $result = $logic->runQueryWithOrder($queryBuilder, $orderBy, 'asc');
+            $this->assertSame($queryBuilder, $result);
+        }
+
+        $this->assertSame(0, $modelClass::$writeCalls);
+    }
+
+    public function test_index_logic_order_by_does_not_invoke_undeclared_relation_method()
+    {
+        $modelClass = 'IndexUndeclaredRelationModel'.uniqid();
+
+        eval("class $modelClass extends \\Illuminate\\Database\\Eloquent\\Model {
+            public static int \$relationCalls = 0;
+            protected \$table = 'events';
+            public \$timestamps = false;
+            public function user() { static::\$relationCalls++; return null; }
+        }");
+
+        $queryBuilder = Mockery::mock(Builder::class);
+        $queryBuilder->shouldReceive('select')->andReturnSelf();
+        $queryBuilder->shouldReceive('orderBy')->with('user.name', 'asc')->once()->andReturnSelf();
+
+        $logic = new class(new $modelClass()) extends IndexLogic
+        {
+            public function run(Data $input): JsonResponse
+            {
+                // @phpstan-ignore-next-line
+                return $this->logic($input);
+            }
+        };
+
+        // @phpstan-ignore-next-line
+        $logic->runQueryWithOrder($queryBuilder, 'user.name', 'asc');
+
+        $this->assertSame(0, $modelClass::$relationCalls);
     }
 
     public function test_index_logic_sortable_columns_returns_all_when_allow_empty()
