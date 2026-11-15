@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Mockery;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Spatie\LaravelData\Data;
 
 class IndexLogicTest extends TestCase
@@ -754,5 +755,134 @@ class IndexLogicTest extends TestCase
         };
 
         $this->assertSame(['id', 'name', 'price', 'category_name'], $logic->exposedSortableColumns());
+    }
+
+    #[DataProvider('disallowedFilterPropertiesProvider')]
+    public function test_index_logic_rejects_canonicalized_disallowed_filter_properties(string $property)
+    {
+        $input = new class extends Data
+        {
+            public array $filters = [];
+        };
+        $input->filters = [
+            ['property' => $property, 'value' => 'x', 'operator' => '='],
+        ];
+
+        $model = Mockery::mock(Model::class);
+        $model->shouldNotReceive('newQuery');
+
+        $logic = new class($model) extends IndexLogic
+        {
+            public function run(Data $input): JsonResponse
+            {
+                // @phpstan-ignore-next-line
+                return $this->logic($input);
+            }
+        };
+
+        $response = $logic->run($input);
+
+        $this->assertEquals(422, $response->getStatusCode());
+        $this->assertStringContainsString($property, $response->getData(true)['message']);
+    }
+
+    public static function disallowedFilterPropertiesProvider(): array
+    {
+        return [
+            'plain' => ['password'],
+            'capitalized' => ['Password'],
+            'uppercase' => ['PASSWORD'],
+            'qualified' => ['users.password'],
+            'qualified capitalized' => ['users.Password'],
+            'deleted at' => ['deleted_at'],
+            'qualified deleted at' => ['users.deleted_at'],
+        ];
+    }
+
+    #[DataProvider('disallowedOrderByProvider')]
+    public function test_index_logic_rejects_canonicalized_disallowed_order_by(string $orderBy)
+    {
+        $input = new class extends Data
+        {
+            public string $order_by = '';
+        };
+        $input->order_by = $orderBy;
+
+        $model = Mockery::mock(Model::class);
+        $queryBuilder = Mockery::mock(Builder::class);
+        $model->shouldReceive('newQuery')->andReturn($queryBuilder);
+
+        $queryBuilder->shouldNotReceive('orderBy');
+        $queryBuilder->shouldNotReceive('with');
+        $queryBuilder->shouldNotReceive('paginate');
+
+        $logic = new class($model) extends IndexLogic
+        {
+            public function run(Data $input): JsonResponse
+            {
+                // @phpstan-ignore-next-line
+                return $this->logic($input);
+            }
+        };
+
+        $response = $logic->run($input);
+
+        $this->assertEquals(422, $response->getStatusCode());
+        $this->assertStringContainsString($orderBy, $response->getData(true)['message']);
+    }
+
+    public static function disallowedOrderByProvider(): array
+    {
+        return [
+            'qualified password' => ['users.password'],
+            'qualified deleted at' => ['users.deleted_at'],
+        ];
+    }
+
+    #[DataProvider('allowedFilterPropertiesProvider')]
+    public function test_index_logic_allows_non_disallowed_filter_properties(string $property)
+    {
+        $input = new class extends Data
+        {
+            public array $filters = [];
+        };
+        $input->filters = [
+            ['property' => $property, 'value' => 'x', 'operator' => '='],
+        ];
+
+        $model = Mockery::mock(Model::class);
+        $queryBuilder = Mockery::mock(Builder::class);
+        $pagination = Mockery::mock(LengthAwarePaginator::class);
+
+        $model->shouldReceive('newQuery')->andReturn($queryBuilder);
+        $queryBuilder->shouldReceive('where')->with($property, '=', 'x')->once()->andReturnSelf();
+        $queryBuilder->shouldReceive('with')->andReturnSelf();
+        $queryBuilder->shouldReceive('paginate')->andReturn($pagination);
+
+        $pagination->shouldReceive('getCollection')->andReturn(collect());
+        $pagination->shouldReceive('total')->andReturn(0);
+        $pagination->shouldReceive('perPage')->andReturn(15);
+        $pagination->shouldReceive('currentPage')->andReturn(1);
+
+        $logic = new class($model) extends IndexLogic
+        {
+            public function run(Data $input): JsonResponse
+            {
+                // @phpstan-ignore-next-line
+                return $this->logic($input);
+            }
+        };
+
+        $response = $logic->run($input);
+
+        $this->assertEquals(200, $response->getStatusCode());
+    }
+
+    public static function allowedFilterPropertiesProvider(): array
+    {
+        return [
+            'plain' => ['name'],
+            'qualified' => ['users.name'],
+        ];
     }
 }

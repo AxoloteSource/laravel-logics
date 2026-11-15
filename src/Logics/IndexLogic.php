@@ -33,6 +33,14 @@ abstract class IndexLogic extends Logic
     ];
 
     /**
+     * Optional filter property allowlist. When non-empty, it takes precedence
+     * over the denylist.
+     *
+     * @var array<int, string>
+     */
+    protected array $allowedFilterProperties = [];
+
+    /**
      * Filter operators that must never be applied.
      *
      * @var array<int, string>
@@ -90,6 +98,14 @@ abstract class IndexLogic extends Logic
             }
 
             if (empty($this->allowOrderByFields) || in_array($orderBy, $this->allowOrderByFields)) {
+                if (! $this->isFilterPropertyAllowed($orderBy)) {
+                    $this->error(__('The filter property ":property" is not allowed.', [
+                        'property' => $orderBy,
+                    ]));
+
+                    return $this;
+                }
+
                 $this->queryBuilder = $this->runQueryWithOrder(
                     $this->queryBuilder,
                     $orderBy,
@@ -162,7 +178,7 @@ abstract class IndexLogic extends Logic
             $operator = strtolower((string) ($filterData['operator'] ?? '='));
 
             foreach (explode('|', $property) as $item) {
-                if (in_array($item, $this->disallowedFilterProperties, true)) {
+                if (! $this->isFilterPropertyAllowed($item)) {
                     return $this->error(__('The filter property ":property" is not allowed.', [
                         'property' => $item,
                     ]));
@@ -177,6 +193,24 @@ abstract class IndexLogic extends Logic
         }
 
         return true;
+    }
+
+    protected function canonicalFilterProperty(string $property): string
+    {
+        $segments = explode('.', $property);
+
+        return strtolower(trim((string) end($segments)));
+    }
+
+    protected function isFilterPropertyAllowed(string $property): bool
+    {
+        $column = $this->canonicalFilterProperty($property);
+
+        if ($this->allowedFilterProperties !== []) {
+            return in_array($column, array_map('strtolower', $this->allowedFilterProperties), true);
+        }
+
+        return ! in_array($column, array_map('strtolower', $this->disallowedFilterProperties), true);
     }
 
     public function runQueryWithSearch(string $search): Builder
