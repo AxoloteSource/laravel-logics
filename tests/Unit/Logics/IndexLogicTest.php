@@ -177,6 +177,42 @@ class IndexLogicTest extends TestCase
         $this->assertSame('The filter operator "rlike" is not allowed.', $response->getData(true)['message']);
     }
 
+    public function test_index_logic_rejects_more_than_ten_filters_by_default()
+    {
+        $input = new class extends Data
+        {
+            public array $filters = [];
+
+            public function __construct()
+            {
+                $this->filters = array_map(
+                    fn (int $index): array => [
+                        'property' => 'name',
+                        'value' => "name{$index}",
+                        'operator' => '=',
+                    ],
+                    range(0, 10),
+                );
+            }
+        };
+
+        $model = Mockery::mock(Model::class);
+
+        $logic = new class($model) extends IndexLogic
+        {
+            public function run(Data $input): JsonResponse
+            {
+                // @phpstan-ignore-next-line
+                return $this->logic($input);
+            }
+        };
+
+        $response = $logic->run($input);
+
+        $this->assertEquals(422, $response->getStatusCode());
+        $this->assertSame('Too many filters: the maximum is 10.', $response->getData(true)['message']);
+    }
+
     public function test_index_logic_rejects_disallowed_filter_operators_case_insensitively()
     {
         $input = new class extends Data
@@ -261,6 +297,109 @@ class IndexLogicTest extends TestCase
 
         $this->assertEquals(422, $response->getStatusCode());
         $this->assertSame('Too many filters: the maximum is 2.', $response->getData(true)['message']);
+    }
+
+    public function test_index_logic_rejects_filter_exceeding_clause_budget()
+    {
+        $input = new class extends Data
+        {
+            public array $filters = [];
+        };
+        $input->filters = [
+            [
+                'property' => implode('|', array_fill(0, 64, 'name')),
+                'value' => implode('|', array_fill(0, 64, 'v')),
+                'operator' => '=',
+            ],
+        ];
+
+        $model = Mockery::mock(Model::class);
+        $model->shouldNotReceive('newQuery');
+
+        $logic = new class($model) extends IndexLogic
+        {
+            public function run(Data $input): JsonResponse
+            {
+                // @phpstan-ignore-next-line
+                return $this->logic($input);
+            }
+        };
+
+        $response = $logic->run($input);
+
+        $this->assertEquals(422, $response->getStatusCode());
+        $this->assertSame('Filter is too complex.', $response->getData(true)['message']);
+    }
+
+    public function test_index_logic_rejects_property_with_excessive_pipe_segments()
+    {
+        $input = new class extends Data
+        {
+            public array $filters = [];
+        };
+        $input->filters = [
+            [
+                'property' => str_repeat('name|', 4000).'name',
+                'value' => 'v',
+                'operator' => '=',
+            ],
+        ];
+
+        $model = Mockery::mock(Model::class);
+        $model->shouldNotReceive('newQuery');
+
+        $logic = new class($model) extends IndexLogic
+        {
+            public function run(Data $input): JsonResponse
+            {
+                // @phpstan-ignore-next-line
+                return $this->logic($input);
+            }
+
+            protected ?int $maxFilters = 10;
+        };
+
+        $response = $logic->run($input);
+
+        $this->assertEquals(422, $response->getStatusCode());
+        $this->assertSame('Filter is too complex.', $response->getData(true)['message']);
+    }
+
+    public function test_index_logic_accepts_simple_filter_within_clause_budget()
+    {
+        $input = new class extends Data
+        {
+            public array $filters = [
+                ['property' => 'name', 'value' => 'x', 'operator' => '='],
+            ];
+        };
+
+        $model = Mockery::mock(Model::class);
+        $queryBuilder = Mockery::mock(Builder::class);
+        $pagination = Mockery::mock(LengthAwarePaginator::class);
+
+        $model->shouldReceive('newQuery')->andReturn($queryBuilder);
+        $queryBuilder->shouldReceive('where')->with('name', '=', 'x')->once()->andReturnSelf();
+        $queryBuilder->shouldReceive('with')->andReturnSelf();
+        $queryBuilder->shouldReceive('paginate')->andReturn($pagination);
+
+        $pagination->shouldReceive('getCollection')->andReturn(collect());
+        $pagination->shouldReceive('total')->andReturn(0);
+        $pagination->shouldReceive('perPage')->andReturn(15);
+        $pagination->shouldReceive('currentPage')->andReturn(1);
+
+        $logic = new class($model) extends IndexLogic
+        {
+            public function run(Data $input): JsonResponse
+            {
+                // @phpstan-ignore-next-line
+                return $this->logic($input);
+            }
+        };
+
+        $response = $logic->run($input);
+
+        $this->assertEquals(200, $response->getStatusCode());
     }
 
     public function test_index_logic_with_search()

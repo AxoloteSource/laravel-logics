@@ -55,7 +55,13 @@ abstract class IndexLogic extends Logic
     /**
      * Maximum number of filters to apply. Null means no limit.
      */
-    protected ?int $maxFilters = null;
+    protected ?int $maxFilters = 10;
+
+    /**
+     * Maximum number of expanded clauses (property segments x value segments)
+     * allowed across all filters.
+     */
+    protected int $maxFilterClauses = 50;
 
     public function __construct(?Model $model = null)
     {
@@ -173,9 +179,18 @@ abstract class IndexLogic extends Logic
 
         $disallowedOperators = array_map('strtolower', $this->disallowedFilterOperators);
 
+        $segments = static fn (mixed $value): int => max(1, count(explode('|', (string) $value)));
+        $budget = $this->maxFilterClauses;
+
         foreach ($filters as $filterData) {
             $property = (string) ($filterData['property'] ?? '');
             $operator = strtolower((string) ($filterData['operator'] ?? '='));
+
+            $budget -= $segments($property) * $segments($filterData['value'] ?? '');
+
+            if ($budget < 0) {
+                return $this->error(__('Filter is too complex.'));
+            }
 
             foreach (explode('|', $property) as $item) {
                 if (! $this->isFilterPropertyAllowed($item)) {
