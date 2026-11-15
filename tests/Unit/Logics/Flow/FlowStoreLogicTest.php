@@ -52,7 +52,7 @@ class FlowStoreLogicTest extends TestCase
 
             public function publicModels(): array
             {
-                return [];
+                return ['test-model'];
             }
 
             public function isAllow(): array

@@ -102,6 +102,7 @@ class CouponController extends Controller
         return $logic->run($data);
     }
 }
+```
 
 #### 6. Testing Requirements
 Whenever you create a new endpoint, you MUST create a corresponding feature test to verify its behavior.
@@ -126,5 +127,37 @@ Review your project's `tests/TestCase.php` to discover available helper methods.
         
         $response->assertStatus(200);
     }
+}
+```
+
+#### 7. Flow Model Authorization
+
+When you use the `Flow*LogicBase` classes, the model is selected dynamically from the `{model}` route parameter. The host must implement these methods explicitly:
+
+- `allowedModels()`: map of route key => model class. An unknown key returns `404`.
+- `publicModels()`: route keys that can be accessed without a user or action check.
+- `isAllow()`: map of route key => action name, checked against the authenticated user.
+
+Authorization is **deny-by-default**: Flow returns `403` for any model that is not listed in `publicModels()` and is not mapped in `isAllow()`. Every non-public model must be mapped in `isAllow()`; there is no implicit public access.
+
+```php
+public function allowedModels(): array
+{
+    return [
+        'coupons' => Coupon::class,
+        'public-plans' => Plan::class,
+    ];
+}
+
+public function publicModels(): array
+{
+    return ['public-plans'];
+}
+
+public function isAllow(): array
+{
+    return [
+        'coupons' => 'rewards.coupons.index', // required for a non-public model
+    ];
 }
 ```

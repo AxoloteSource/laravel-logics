@@ -4,6 +4,8 @@ require __DIR__ . '/../vendor/autoload.php';
 
 require __DIR__ . '/../vendor/illuminate/support/helpers.php';
 
+require_once __DIR__ . '/Stubs/App/Models/User.php';
+
 use Illuminate\Container\Container;
 
 if (! function_exists('app')) {

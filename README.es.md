@@ -157,6 +157,8 @@ Componentes de ejemplo de Flow:
 -   `FlowUpdateLogicBase`: Base para actualización automatizada.
 -   `FlowDeleteLogicBase`: Base para eliminación automatizada.
 
+> **Nota de seguridad (cambio incompatible):** La autorización de modelos en Flow es deny-by-default. Los modelos deben declararse en `publicModels()` para ser públicos; cualquier otro modelo debe mapearse en `isAllow()` a una acción que se valida contra el usuario autenticado. Los modelos que no son públicos ni están mapeados ahora devuelven `403` en lugar de ejecutarse sin autorización. Configura `allowedModels()`, `publicModels()` e `isAllow()` en consecuencia.
+
 ## Beneficios
 -   **Código Estructurado**: Pasos de ejecución claramente definidos (`before`, `action`, `after`).
 -   **Consistencia**: Forma estandarizada de manejar CRUD en toda la aplicación.
