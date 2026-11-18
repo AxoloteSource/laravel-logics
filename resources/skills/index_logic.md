@@ -118,6 +118,8 @@ protected function getColumnSearch(): string
 }
 ```
 
+The `property` of a filter must match the custom filter key exactly. Qualified (`users.role`), case-variant (`Role`) or piped (`role|email`) forms are rejected with `422` and never fall back to a raw column filter.
+
 #### 8. Post-Action Logic with `after()`
 Executed after the query and pagination have been processed, allowing data modification or logging.
 

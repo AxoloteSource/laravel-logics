@@ -149,22 +149,29 @@ abstract class IndexLogic extends Logic
 
     public function runQueryFilters(array $filters): Builder
     {
-        $customFilters = array_keys($this->customFilters());
+        $customFilters = $this->customFilters();
 
         foreach ($filters as $filterData) {
-            $property = $filterData['property'];
-            $value = $filterData['value'];
-            $operator = $filterData['operator'] ?? '=';
+            $property = (string) ($filterData['property'] ?? '');
+            $value = (string) ($filterData['value'] ?? '');
+            $operator = (string) ($filterData['operator'] ?? '=');
 
-            $filter = new Filter($property, $value, $operator);
-
-            if (in_array($property, $customFilters)) {
-                $this->applyCustomFilter($filter);
+            if (array_key_exists($property, $customFilters)) {
+                $this->applyCustomFilter(new Filter($property, $value, $operator));
 
                 continue;
             }
 
-            $this->queryBuilder = $filter->applyToQuery($this->queryBuilder);
+            if ($this->isCustomFilterVariant($property)) {
+                $this->error(__('The filter property ":property" is not allowed. Use its canonical custom filter name.', [
+                    'property' => $property,
+                ]));
+
+                continue;
+            }
+
+            $this->queryBuilder = (new Filter($property, $value, $operator))
+                ->applyToQuery($this->queryBuilder);
         }
 
         return $this->queryBuilder;
@@ -201,6 +208,12 @@ abstract class IndexLogic extends Logic
                 }
             }
 
+            if ($this->isCustomFilterVariant($property)) {
+                return $this->error(__('The filter property ":property" is not allowed. Use its canonical custom filter name.', [
+                    'property' => $property,
+                ]));
+            }
+
             if (in_array($operator, $disallowedOperators, true)) {
                 return $this->error(__('The filter operator ":operator" is not allowed.', [
                     'operator' => $operator,
@@ -227,6 +240,28 @@ abstract class IndexLogic extends Logic
         }
 
         return ! in_array($column, array_map('strtolower', $this->disallowedFilterProperties), true);
+    }
+
+    protected function isCustomFilterVariant(string $property): bool
+    {
+        $customFilters = $this->customFilters();
+
+        if (array_key_exists($property, $customFilters)) {
+            return false;
+        }
+
+        $customKeys = array_map(
+            fn ($key): string => $this->canonicalFilterProperty((string) $key),
+            array_keys($customFilters)
+        );
+
+        foreach (explode('|', $property) as $segment) {
+            if (in_array($this->canonicalFilterProperty($segment), $customKeys, true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function runQueryWithSearch(string $search): Builder

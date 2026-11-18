@@ -486,6 +486,170 @@ class IndexLogicTest extends TestCase
         $this->assertEquals(200, $response->getStatusCode());
     }
 
+    public function test_index_logic_dispatches_exact_custom_filter()
+    {
+        $input = new class extends Data
+        {
+            public array $filters = [];
+        };
+        $input->filters = [
+            ['property' => 'role', 'value' => 'admin', 'operator' => '='],
+        ];
+
+        $model = Mockery::mock(Model::class);
+        $queryBuilder = Mockery::mock(Builder::class);
+        $pagination = Mockery::mock(LengthAwarePaginator::class);
+
+        $model->shouldReceive('newQuery')->andReturn($queryBuilder);
+        $queryBuilder->shouldReceive('with')->andReturnSelf();
+        $queryBuilder->shouldReceive('paginate')->andReturn($pagination);
+
+        $pagination->shouldReceive('getCollection')->andReturn(collect());
+        $pagination->shouldReceive('total')->andReturn(0);
+        $pagination->shouldReceive('perPage')->andReturn(15);
+        $pagination->shouldReceive('currentPage')->andReturn(1);
+
+        $counter = new \stdClass;
+        $counter->calls = 0;
+
+        $logic = new class($model, $counter) extends IndexLogic
+        {
+            private \stdClass $counter;
+
+            public function __construct(Model $model, \stdClass $counter)
+            {
+                parent::__construct($model);
+                $this->counter = $counter;
+            }
+
+            public function run(Data $input): JsonResponse
+            {
+                // @phpstan-ignore-next-line
+                return $this->logic($input);
+            }
+
+            protected function customFilters(): array
+            {
+                return [
+                    'role' => function ($filter) {
+                        $this->counter->calls++;
+                    },
+                ];
+            }
+        };
+
+        $response = $logic->run($input);
+
+        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertSame(1, $counter->calls);
+    }
+
+    #[DataProvider('customFilterVariantProvider')]
+    public function test_index_logic_rejects_custom_filter_variants(string $property)
+    {
+        $input = new class extends Data
+        {
+            public array $filters = [];
+        };
+        $input->filters = [
+            ['property' => $property, 'value' => 'admin', 'operator' => '='],
+        ];
+
+        $model = Mockery::mock(Model::class);
+        $model->shouldNotReceive('newQuery');
+
+        $counter = new \stdClass;
+        $counter->calls = 0;
+
+        $logic = new class($model, $counter) extends IndexLogic
+        {
+            private \stdClass $counter;
+
+            public function __construct(Model $model, \stdClass $counter)
+            {
+                parent::__construct($model);
+                $this->counter = $counter;
+            }
+
+            public function run(Data $input): JsonResponse
+            {
+                // @phpstan-ignore-next-line
+                return $this->logic($input);
+            }
+
+            protected function customFilters(): array
+            {
+                return [
+                    'role' => function ($filter) {
+                        $this->counter->calls++;
+                    },
+                ];
+            }
+        };
+
+        $response = $logic->run($input);
+
+        $this->assertEquals(422, $response->getStatusCode());
+        $this->assertSame(0, $counter->calls);
+    }
+
+    public static function customFilterVariantProvider(): array
+    {
+        return [
+            'piped' => ['role|email'],
+            'qualified' => ['users.role'],
+            'capitalized' => ['Role'],
+            'qualified capitalized' => ['users.Role'],
+        ];
+    }
+
+    public function test_index_logic_keeps_non_custom_filter_properties()
+    {
+        $input = new class extends Data
+        {
+            public array $filters = [];
+        };
+        $input->filters = [
+            ['property' => 'email', 'value' => 'user@example.com', 'operator' => '='],
+        ];
+
+        $model = Mockery::mock(Model::class);
+        $queryBuilder = Mockery::mock(Builder::class);
+        $pagination = Mockery::mock(LengthAwarePaginator::class);
+
+        $model->shouldReceive('newQuery')->andReturn($queryBuilder);
+        $queryBuilder->shouldReceive('where')->with('email', '=', 'user@example.com')->once()->andReturnSelf();
+        $queryBuilder->shouldReceive('with')->andReturnSelf();
+        $queryBuilder->shouldReceive('paginate')->andReturn($pagination);
+
+        $pagination->shouldReceive('getCollection')->andReturn(collect());
+        $pagination->shouldReceive('total')->andReturn(0);
+        $pagination->shouldReceive('perPage')->andReturn(15);
+        $pagination->shouldReceive('currentPage')->andReturn(1);
+
+        $logic = new class($model) extends IndexLogic
+        {
+            public function run(Data $input): JsonResponse
+            {
+                // @phpstan-ignore-next-line
+                return $this->logic($input);
+            }
+
+            protected function customFilters(): array
+            {
+                return [
+                    'role' => function ($filter) {
+                        // no-op
+                    },
+                ];
+            }
+        };
+
+        $response = $logic->run($input);
+
+        $this->assertEquals(200, $response->getStatusCode());
+    }
+
     public function test_index_logic_order_by_applies_order_with_default_direction()
     {
         $input = new class extends Data
