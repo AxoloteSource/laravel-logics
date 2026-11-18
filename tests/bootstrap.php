@@ -40,3 +40,10 @@ if (! function_exists('__')) {
         return $key;
     }
 }
+
+if (! function_exists('logger')) {
+    function logger(mixed $message = null, array $context = []): void
+    {
+        // No-op logger for package tests.
+    }
+}
