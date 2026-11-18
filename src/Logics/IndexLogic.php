@@ -19,6 +19,11 @@ abstract class IndexLogic extends Logic
 
     protected bool $withPagination = true;
 
+    /**
+     * Maximum number of results per page. Used to bound the input.
+     */
+    protected int $maxPerPage = 100;
+
     protected array $allowOrderByFields = [];
 
     protected array $aliasOrderBy = [];
@@ -85,8 +90,8 @@ abstract class IndexLogic extends Logic
             return $this;
         }
 
-        $limit = $this->input->limit ?? 15;
-        $page = $this->input->page ?? 1;
+        $limit = max(1, min((int) ($this->input->limit ?? 15), $this->maxPerPage));
+        $page = max(1, (int) ($this->input->page ?? 1));
         $this->queryBuilder = $this->makeQuery();
 
         if (isset($this->input->filters)) {

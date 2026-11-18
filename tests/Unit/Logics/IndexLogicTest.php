@@ -59,6 +59,101 @@ class IndexLogicTest extends TestCase
         $this->assertArrayHasKey('headers', $data);
     }
 
+    #[DataProvider('limitPageProvider')]
+    public function test_index_logic_normalizes_limit_and_page(?int $limit, ?int $page, int $expectedLimit, int $expectedPage)
+    {
+        $input = new class extends Data
+        {
+            public ?int $limit = 15;
+
+            public ?int $page = 1;
+        };
+        $input->limit = $limit;
+        $input->page = $page;
+
+        $model = Mockery::mock(Model::class);
+        $queryBuilder = Mockery::mock(Builder::class);
+        $pagination = Mockery::mock(LengthAwarePaginator::class);
+
+        $model->shouldReceive('newQuery')->andReturn($queryBuilder);
+        $queryBuilder->shouldReceive('with')->with([])->andReturnSelf();
+        $queryBuilder->shouldReceive('paginate')
+            ->with($expectedLimit, ['*'], 'page', $expectedPage)
+            ->once()
+            ->andReturn($pagination);
+
+        $pagination->shouldReceive('getCollection')->andReturn(collect());
+        $pagination->shouldReceive('total')->andReturn(0);
+        $pagination->shouldReceive('perPage')->andReturn($expectedLimit);
+        $pagination->shouldReceive('currentPage')->andReturn($expectedPage);
+
+        $logic = new class($model) extends IndexLogic
+        {
+            public function run(Data $input): JsonResponse
+            {
+                // @phpstan-ignore-next-line
+                return $this->logic($input);
+            }
+        };
+
+        $response = $logic->run($input);
+
+        $this->assertEquals(200, $response->getStatusCode());
+    }
+
+    public static function limitPageProvider(): array
+    {
+        return [
+            'negative limit' => [-1, 1, 1, 1],
+            'zero limit' => [0, 1, 1, 1],
+            'negative large limit' => [-100, 1, 1, 1],
+            'limit above max' => [1000000, 1, 100, 1],
+            'negative page' => [15, -1, 15, 1],
+            'zero page' => [15, 0, 15, 1],
+        ];
+    }
+
+    public function test_index_logic_respects_custom_max_per_page()
+    {
+        $input = new class extends Data
+        {
+            public ?int $limit = 1000;
+
+            public ?int $page = 1;
+        };
+
+        $model = Mockery::mock(Model::class);
+        $queryBuilder = Mockery::mock(Builder::class);
+        $pagination = Mockery::mock(LengthAwarePaginator::class);
+
+        $model->shouldReceive('newQuery')->andReturn($queryBuilder);
+        $queryBuilder->shouldReceive('with')->with([])->andReturnSelf();
+        $queryBuilder->shouldReceive('paginate')
+            ->with(50, ['*'], 'page', 1)
+            ->once()
+            ->andReturn($pagination);
+
+        $pagination->shouldReceive('getCollection')->andReturn(collect());
+        $pagination->shouldReceive('total')->andReturn(0);
+        $pagination->shouldReceive('perPage')->andReturn(50);
+        $pagination->shouldReceive('currentPage')->andReturn(1);
+
+        $logic = new class($model) extends IndexLogic
+        {
+            public function run(Data $input): JsonResponse
+            {
+                // @phpstan-ignore-next-line
+                return $this->logic($input);
+            }
+
+            protected int $maxPerPage = 50;
+        };
+
+        $response = $logic->run($input);
+
+        $this->assertEquals(200, $response->getStatusCode());
+    }
+
     public function test_index_logic_with_filters()
     {
         $input = new class extends Data
