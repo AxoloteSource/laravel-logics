@@ -62,9 +62,15 @@ abstract class Logic
 
     final public function lazyRun(Data $input): self
     {
+        $outerError = ErrorContainer::$error;
+
         $this->shouldResponse = true;
 
-        return $this->logic($input);
+        $result = $this->logic($input);
+
+        ErrorContainer::$error = $outerError !== [] ? $outerError : ErrorContainer::$error;
+
+        return $result;
     }
 
     final protected function logic(Data $input): JsonResponse|StreamedResponse|self

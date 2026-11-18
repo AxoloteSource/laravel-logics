@@ -4,6 +4,8 @@ require __DIR__ . '/../vendor/autoload.php';
 
 require __DIR__ . '/../vendor/illuminate/support/helpers.php';
 
+require_once __DIR__ . '/Stubs/App/Models/User.php';
+
 use Illuminate\Container\Container;
 
 if (! function_exists('app')) {
@@ -36,5 +38,12 @@ if (! function_exists('__')) {
         }
 
         return $key;
+    }
+}
+
+if (! function_exists('logger')) {
+    function logger(mixed $message = null, array $context = []): void
+    {
+        // No-op logger for package tests.
     }
 }

@@ -5,6 +5,7 @@ namespace AxoloteSource\Logics\Logics;
 use AxoloteSource\Logics\Classes\Filter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Response;
@@ -17,6 +18,11 @@ abstract class IndexLogic extends Logic
     protected LengthAwarePaginator $pagination;
 
     protected bool $withPagination = true;
+
+    /**
+     * Maximum number of results per page. Used to bound the input.
+     */
+    protected int $maxPerPage = 100;
 
     protected array $allowOrderByFields = [];
 
@@ -33,6 +39,14 @@ abstract class IndexLogic extends Logic
     ];
 
     /**
+     * Optional filter property allowlist. When non-empty, it takes precedence
+     * over the denylist.
+     *
+     * @var array<int, string>
+     */
+    protected array $allowedFilterProperties = [];
+
+    /**
      * Filter operators that must never be applied.
      *
      * @var array<int, string>
@@ -47,7 +61,13 @@ abstract class IndexLogic extends Logic
     /**
      * Maximum number of filters to apply. Null means no limit.
      */
-    protected ?int $maxFilters = null;
+    protected ?int $maxFilters = 10;
+
+    /**
+     * Maximum number of expanded clauses (property segments x value segments)
+     * allowed across all filters.
+     */
+    protected int $maxFilterClauses = 50;
 
     public function __construct(?Model $model = null)
     {
@@ -70,8 +90,8 @@ abstract class IndexLogic extends Logic
             return $this;
         }
 
-        $limit = $this->input->limit ?? 15;
-        $page = $this->input->page ?? 1;
+        $limit = max(1, min((int) ($this->input->limit ?? 15), $this->maxPerPage));
+        $page = max(1, (int) ($this->input->page ?? 1));
         $this->queryBuilder = $this->makeQuery();
 
         if (isset($this->input->filters)) {
@@ -89,7 +109,15 @@ abstract class IndexLogic extends Logic
                 $orderBy = $this->aliasOrderBy[$orderBy];
             }
 
-            if (empty($this->allowOrderByFields) || in_array($orderBy, $this->allowOrderByFields)) {
+            if ($this->isOrderByAllowed($orderBy)) {
+                if (! $this->isFilterPropertyAllowed($orderBy)) {
+                    $this->error(__('The filter property ":property" is not allowed.', [
+                        'property' => $orderBy,
+                    ]));
+
+                    return $this;
+                }
+
                 $this->queryBuilder = $this->runQueryWithOrder(
                     $this->queryBuilder,
                     $orderBy,
@@ -126,22 +154,29 @@ abstract class IndexLogic extends Logic
 
     public function runQueryFilters(array $filters): Builder
     {
-        $customFilters = array_keys($this->customFilters());
+        $customFilters = $this->customFilters();
 
         foreach ($filters as $filterData) {
-            $property = $filterData['property'];
-            $value = $filterData['value'];
-            $operator = $filterData['operator'] ?? '=';
+            $property = (string) ($filterData['property'] ?? '');
+            $value = (string) ($filterData['value'] ?? '');
+            $operator = (string) ($filterData['operator'] ?? '=');
 
-            $filter = new Filter($property, $value, $operator);
-
-            if (in_array($property, $customFilters)) {
-                $this->applyCustomFilter($filter);
+            if (array_key_exists($property, $customFilters)) {
+                $this->applyCustomFilter(new Filter($property, $value, $operator));
 
                 continue;
             }
 
-            $this->queryBuilder = $filter->applyToQuery($this->queryBuilder);
+            if ($this->isCustomFilterVariant($property)) {
+                $this->error(__('The filter property ":property" is not allowed. Use its canonical custom filter name.', [
+                    'property' => $property,
+                ]));
+
+                continue;
+            }
+
+            $this->queryBuilder = (new Filter($property, $value, $operator))
+                ->applyToQuery($this->queryBuilder);
         }
 
         return $this->queryBuilder;
@@ -157,16 +192,31 @@ abstract class IndexLogic extends Logic
 
         $disallowedOperators = array_map('strtolower', $this->disallowedFilterOperators);
 
+        $segments = static fn (mixed $value): int => max(1, count(explode('|', (string) $value)));
+        $budget = $this->maxFilterClauses;
+
         foreach ($filters as $filterData) {
             $property = (string) ($filterData['property'] ?? '');
             $operator = strtolower((string) ($filterData['operator'] ?? '='));
 
+            $budget -= $segments($property) * $segments($filterData['value'] ?? '');
+
+            if ($budget < 0) {
+                return $this->error(__('Filter is too complex.'));
+            }
+
             foreach (explode('|', $property) as $item) {
-                if (in_array($item, $this->disallowedFilterProperties, true)) {
+                if (! $this->isFilterPropertyAllowed($item)) {
                     return $this->error(__('The filter property ":property" is not allowed.', [
                         'property' => $item,
                     ]));
                 }
+            }
+
+            if ($this->isCustomFilterVariant($property)) {
+                return $this->error(__('The filter property ":property" is not allowed. Use its canonical custom filter name.', [
+                    'property' => $property,
+                ]));
             }
 
             if (in_array($operator, $disallowedOperators, true)) {
@@ -177,6 +227,46 @@ abstract class IndexLogic extends Logic
         }
 
         return true;
+    }
+
+    protected function canonicalFilterProperty(string $property): string
+    {
+        $segments = explode('.', $property);
+
+        return strtolower(trim((string) end($segments)));
+    }
+
+    protected function isFilterPropertyAllowed(string $property): bool
+    {
+        $column = $this->canonicalFilterProperty($property);
+
+        if ($this->allowedFilterProperties !== []) {
+            return in_array($column, array_map('strtolower', $this->allowedFilterProperties), true);
+        }
+
+        return ! in_array($column, array_map('strtolower', $this->disallowedFilterProperties), true);
+    }
+
+    protected function isCustomFilterVariant(string $property): bool
+    {
+        $customFilters = $this->customFilters();
+
+        if (array_key_exists($property, $customFilters)) {
+            return false;
+        }
+
+        $customKeys = array_map(
+            fn ($key): string => $this->canonicalFilterProperty((string) $key),
+            array_keys($customFilters)
+        );
+
+        foreach (explode('|', $property) as $segment) {
+            if (in_array($this->canonicalFilterProperty($segment), $customKeys, true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function runQueryWithSearch(string $search): Builder
@@ -199,6 +289,32 @@ abstract class IndexLogic extends Logic
         return $queryBuilder->orderBy($orderBy, $direction);
     }
 
+    protected function isOrderByAllowed(string $orderBy): bool
+    {
+        if ($this->allowOrderByFields === []) {
+            return true;
+        }
+
+        if (in_array($orderBy, $this->allowOrderByFields, true)) {
+            return true;
+        }
+
+        if (! str_contains($orderBy, '.')) {
+            return false;
+        }
+
+        $relations = explode('.', $orderBy);
+        array_pop($relations);
+
+        foreach ($relations as $relation) {
+            if (! in_array($relation, $this->allowOrderByFields, true)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     protected function applyOrderByRelation(Builder $queryBuilder, string $orderBy, string $direction): Builder
     {
         $parts = explode('.', $orderBy);
@@ -212,11 +328,17 @@ abstract class IndexLogic extends Logic
         $queryBuilder->select("{$baseTable}.*");
 
         foreach ($relations as $index => $relationName) {
-            if (! method_exists($currentModel, $relationName)) {
+            if (! in_array($relationName, $this->allowOrderByFields, true)
+                || ! method_exists($currentModel, $relationName)) {
                 return $queryBuilder->orderBy($orderBy, $direction);
             }
 
-            $relation = $currentModel->$relationName();
+            $relation = $currentModel->{$relationName}();
+
+            if (! $relation instanceof Relation) {
+                return $queryBuilder->orderBy($orderBy, $direction);
+            }
+
             $relatedModel = $relation->getRelated();
             $relatedTable = $relatedModel->getTable();
             $relatedAlias = "{$relationName}_{$index}";

@@ -45,14 +45,25 @@ trait FlowLogic
         );
     }
 
-    private function validateAction()
+    private function validateAction(): bool
     {
-        if (! array_key_exists($this->modelRoute, $this->isAllow())) {
+        if (in_array($this->modelRoute, $this->publicModels(), true)) {
             return true;
         }
 
-        $action = $this->isAllow()[$this->modelRoute];
-        if ($this->user()->belongsToAction($action)) {
+        $allowed = $this->isAllow();
+
+        if (! array_key_exists($this->modelRoute, $allowed)) {
+            return $this->error(
+                __('You do not have permission to access this resource'),
+                ['model' => $this->modelRoute],
+                Http::Forbidden
+            );
+        }
+
+        $action = $allowed[$this->modelRoute];
+
+        if ($this->user()?->belongsToAction($action)) {
             return true;
         }
 

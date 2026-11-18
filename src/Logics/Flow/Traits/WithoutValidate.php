@@ -8,14 +8,6 @@ trait WithoutValidate
     {
         $this->modelRoute = $this->input->model;
 
-        $allowedModels = $this->allowedModels();
-        $this->model = new $allowedModels[$this->modelRoute];
-
-        return parent::initializer();
-    }
-
-    protected function before(): bool
-    {
         if (! $this->validIsAllowModel()) {
             return false;
         }
@@ -24,6 +16,14 @@ trait WithoutValidate
             return false;
         }
 
+        $allowedModels = $this->allowedModels();
+        $this->model = new $allowedModels[$this->modelRoute];
+
+        return parent::initializer();
+    }
+
+    protected function before(): bool
+    {
         return true;
     }
 }

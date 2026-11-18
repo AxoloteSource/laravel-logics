@@ -94,10 +94,10 @@ The `IndexData` input accepts two parameters for sorting the results:
 
 The `IndexLogic` exposes two protected properties to control which fields are allowed and how they are mapped:
 
-- `protected array $allowOrderByFields = [];` — Allowlist of database columns that can be used for sorting. When empty, **any** column is allowed.
+- `protected array $allowOrderByFields = [];` — Allowlist of columns and relation names that can be used for sorting. When empty, **any plain column** is allowed, but relations are denied. To allow `user.name`, include `'user'`; for nested paths, include every relation segment.
 - `protected array $aliasOrderBy = [];` — Map of aliases (`'alias' => 'real_column'`). If the provided `order_by` matches a key, it is translated to the corresponding database column before being applied.
 
-Ordering also supports related columns using the dot notation `relation.column` (e.g. `user.name`), automatically joining the related table when needed.
+Ordering also supports related columns using the dot notation `relation.column` (e.g. `user.name`), automatically joining the related table when the relation name is declared in `allowOrderByFields`.
 
 ```php
 class ProductIndexLogic extends IndexLogic
@@ -107,7 +107,7 @@ class ProductIndexLogic extends IndexLogic
         parent::__construct(new Product());
     }
 
-    protected array $allowOrderByFields = ['id', 'name', 'price', 'category_name'];
+    protected array $allowOrderByFields = ['id', 'name', 'price', 'category'];
 
     protected array $aliasOrderBy = [
         'category_name' => 'category.name',
@@ -156,6 +156,8 @@ Example components of Flow:
 -   `FlowShowLogicBase`: Base for automated single resource retrieval.
 -   `FlowUpdateLogicBase`: Base for automated updating.
 -   `FlowDeleteLogicBase`: Base for automated deletion.
+
+> **Security note (breaking change):** Flow model authorization is deny-by-default. Models must be declared in `publicModels()` to be publicly accessible; every other model must be mapped in `isAllow()` to an action checked against the authenticated user. Models that are neither public nor mapped now return `403` instead of running without authorization. Configure `allowedModels()`, `publicModels()` and `isAllow()` accordingly.
 
 ## Benefits
 -   **Structured Code**: Clearly defined execution steps (`before`, `action`, `after`).

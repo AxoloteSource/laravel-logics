@@ -94,10 +94,10 @@ El input `IndexData` acepta dos parámetros para ordenar los resultados:
 
 El `IndexLogic` expone dos propiedades protegidas para controlar qué campos están permitidos y cómo se mapean:
 
-- `protected array $allowOrderByFields = [];` — Lista blanca de columnas de la base de datos que pueden usarse para ordenar. Cuando está vacía, se permite **cualquier** columna.
+- `protected array $allowOrderByFields = [];` — Lista blanca de columnas y nombres de relaciones que pueden usarse para ordenar. Cuando está vacía, se permite **cualquier columna plana**, pero las relaciones quedan denegadas. Para permitir `user.name`, incluye `'user'`; en rutas anidadas, incluye cada segmento de relación.
 - `protected array $aliasOrderBy = [];` — Mapa de alias (`'alias' => 'columna_real'`). Si el `order_by` recibido coincide con una key, se traduce a la columna correspondiente de la base de datos antes de aplicarse.
 
-El ordenamiento también soporta columnas de relaciones mediante la notación con punto `relacion.columna` (por ejemplo `user.name`), realizando automáticamente el join de la tabla relacionada cuando es necesario.
+El ordenamiento también soporta columnas de relaciones mediante la notación con punto `relacion.columna` (por ejemplo `user.name`), realizando automáticamente el join de la tabla relacionada cuando el nombre de la relación está declarado en `allowOrderByFields`.
 
 ```php
 class ProductIndexLogic extends IndexLogic
@@ -107,7 +107,7 @@ class ProductIndexLogic extends IndexLogic
         parent::__construct(new Product());
     }
 
-    protected array $allowOrderByFields = ['id', 'name', 'price', 'category_name'];
+    protected array $allowOrderByFields = ['id', 'name', 'price', 'category'];
 
     protected array $aliasOrderBy = [
         'category_name' => 'category.name',
@@ -156,6 +156,8 @@ Componentes de ejemplo de Flow:
 -   `FlowShowLogicBase`: Base para recuperación automatizada de un solo recurso.
 -   `FlowUpdateLogicBase`: Base para actualización automatizada.
 -   `FlowDeleteLogicBase`: Base para eliminación automatizada.
+
+> **Nota de seguridad (cambio incompatible):** La autorización de modelos en Flow es deny-by-default. Los modelos deben declararse en `publicModels()` para ser públicos; cualquier otro modelo debe mapearse en `isAllow()` a una acción que se valida contra el usuario autenticado. Los modelos que no son públicos ni están mapeados ahora devuelven `403` en lugar de ejecutarse sin autorización. Configura `allowedModels()`, `publicModels()` e `isAllow()` en consecuencia.
 
 ## Beneficios
 -   **Código Estructurado**: Pasos de ejecución claramente definidos (`before`, `action`, `after`).

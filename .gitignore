@@ -6,3 +6,6 @@
 /.phpstorm.meta.php
 /vendor/
 .DS_Store
+
+# Plan local de trabajo e issues (no versionado)
+/plan/
